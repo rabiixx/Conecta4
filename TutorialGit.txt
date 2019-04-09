@@ -1,0 +1,32 @@
+
+1.- Creamos nuevo directorio: $ mkdir Proyecto
+2.- Inicializar repositorio de Git: $ git init
+3.- Ver estado del proyecto, archivos, carpetas: $ git status
+4.- Agregar archivos al entorno de trabajo: $ git add ejemplo.js
+5.- Crear 'punto de control'/snap: $ git commit
+6.- Configurar correo: $ git config --global user.email "example@gmail.com"
+7.- Configurar nombre: $ git config --global user.name "Your name"
+8.- Deshacer cambios en archivo: $ git checkout -- ejemplo.js
+9.- Historial de cambios: $ git log
+10.- Agreagar arechivos para ignorar: 
+	$ mkdir .gitignore
+	$ git add .gitignore
+11.- Commit: $ git commit -m "Primera version"
+12.- Ver ramas: $ git branch
+13.- Crear nuevas ramas: $ git branch ramaTest
+14.- Cambiar de rama: $ git checkout ramaTest
+15.- Crear cuenta github
+
+- Create a new repository on the command line
+	$ echo "# Ingenieria_Informatica" >> README.md
+	$ git init
+	$ git add README.md
+	$ git commit -m "first commit"
+	$ git remote add origin https://github.com/rabiixx/Conecta4.git
+	$ git push -u origin master
+
+- Push an existing repository from the command line
+	$ git remote add origin https://github.com/rabiixx/Conecta4.git
+	$ git push -u origin master
+
+- Descargar repositorio: $ git clone https://github.com/rabiixx/Conecta4.git
