@@ -11,8 +11,11 @@ int main(int argc, char const *argv[]){
 	for (int i = 0; i < 6; ++i)
 		for (int j = 0; j < 6; ++j)
 			matrix[i][j] = 'A';
-	matrix[5][5] = 'O';
-	matrix[4][5] = 'O';
+	
+	for (int i = 0; i < 6; ++i)
+	{
+		matrix[i][5] = 'O';
+	}
 
 	printf("Introduce una columa: \n");
 	scanf("%d", &col);
@@ -23,8 +26,12 @@ int main(int argc, char const *argv[]){
 			break;
 		z++;
 	}
-	printf("%d\n", (z - 1));
-	matrix[z - 1][col] = 'O';
+	if(z == 0){
+		printf("Error\n");
+	}else{
+		matrix[z - 1][col] = 'O';
+	}
+
 
 	for (int i = 0; i < 6; ++i){
 		for (int j = 0; j < 6; ++j)

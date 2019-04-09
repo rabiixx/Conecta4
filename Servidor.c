@@ -203,6 +203,10 @@ int main(int argc, char const *argv[]){
 			
 			/* Quien empieza jugando ? */
 			fprintf(arrClientes[0].f, "URTURN\n");
+			for (int i = 0; i < 6; ++i)
+				for (int j = 0; j < 6; ++j)
+					matrix[i][j] = 'A';
+
 
 			compactaClaves();
 			
@@ -239,9 +243,20 @@ int main(int argc, char const *argv[]){
 				for (int i = 0; i < numClientes; i++){
 					if(FD_ISSET(arrClientes[i].fd, &descriptoresLectura) ){
 
+						int tempColumna;
 						if(fgets(buffer, MAXDATASIZE, arrClientes[i].f) == NULL){
 							perror("fgets failed");
 							salir_correctamente(EXIT_FAILURE);
+						}
+
+						sscanf(buffer, "%s", cmd);
+						if(strcmp("COLUMN", cmd) == 0){
+							sscanf(buffer, "%s")
+							if (meterFicha(nColumnas, nColumnas, tablero, int tempColumna) == -1){
+								fprintf(arrClientes[i].f "COLUMN ERROR\n");
+							}else{
+								fprintf(arrClientes[i].f "COLUMN OK\n");
+							}
 						}
 						
 						
@@ -419,3 +434,20 @@ void compactaClaves(/*cliente *arrClientes, int *numClientes*/void){
 }
 
 /*https://gist.github.com/Alexey-N-Chernyshov/4634731*/
+
+
+void meterFicha(int nCol, int nFil, char matrix[][nCol], int col){
+	
+	int i = 0; 
+	while(i < nFil){
+		if(matrix[i][col] != 'A')
+			break;
+		z++;
+	}
+	if(z == 0){
+		return -1;
+	}else{
+		matrix[z - 1][col] = 'O';
+		return 0;
+	}
+}
