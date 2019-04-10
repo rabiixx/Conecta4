@@ -265,6 +265,7 @@ int main(int argc, char *argv[]){
 		}
 		sscanf(buffer,"%s", cmd);
 		if(strcmp("URTURN", cmd) != 0){
+			printf("adios\n");
 			salir_correctamente(EXIT_FAILURE);
 		}else if(strcmp("VICTORY", cmd) == 0){
 			printf("[+] VICTORIA!\n");
@@ -298,7 +299,6 @@ int main(int argc, char *argv[]){
 			}else if(strcmp("COLUMN ERROR\n", buffer) == 0)
 				goto B;
 			else{
-				printf("oooscasd\n");
 				salir_correctamente(EXIT_FAILURE);
 			}
 		}else{
