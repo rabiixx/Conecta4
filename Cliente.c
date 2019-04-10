@@ -79,8 +79,8 @@ int main(int argc, char *argv[]){
 
 	system("clear");
 
-	if(argc != 3){
-		perror("Usage: ./client <ip_address> <port> ");
+	if(argc != 4){
+		perror("Usage: ./client <ip_address> <port> <nombre>");
 		exit(EXIT_FAILURE);
 	}
 
@@ -126,6 +126,17 @@ int main(int argc, char *argv[]){
 		
 		int a, b;
 		char cmd[MAXDATASIZE];
+
+		if( fgets(buffer, MAXDATASIZE, server_f) == NULL){
+			perror("fgets failed");
+			protocolError(EXIT_FAILURE);
+		}
+
+		if(strcmp("FULL\n", buffer) == 0){
+			salir_correctamente(EXIT_SUCCESS);
+		}else if(strcmp("WELCOME\n", buffer) != 0){
+			salir_correctamente(EXIT_FAILURE);
+		}
 
 		printf("[+] No existe id almacenado, realizando petición de registro\n");
 		fprintf(server_f, "REGISTRAR\n");
@@ -174,6 +185,19 @@ int main(int argc, char *argv[]){
 				}
 
 				fprintf(user_f, "%s %d\n", Login.user_id, Login.res);
+				fprintf(server_f, "SETNAME %s\n", argv[3]);
+
+				if( fgets(buffer, MAXDATASIZE, server_f) == NULL){
+					perror("fgets failed");
+					exit(EXIT_FAILURE);
+				}
+
+				if(strcmp("SETNAME OK\n", buffer) != 0){
+					salir_correctamente(EXIT_SUCCESS);
+				}
+
+				printf("[+] CAmbioo de nombre correcto!\n");
+
 				fclose(user_f);
 			}else
 				protocolError(EXIT_FAILURE);
@@ -208,28 +232,32 @@ int main(int argc, char *argv[]){
 			protocolError(EXIT_FAILURE);
 	}
 
+
+	char cmd[MAXDATASIZE];
+	int nFilas, nColumnas;
+	char nombreVS[100];
+	char player = 'O';
+	char playerVS = 'X';
+	/* START */
+	if(fgets(buffer, MAXDATASIZE, server_f) ==  NULL){
+		perror("fgets failed");
+		salir_correctamente(EXIT_FAILURE);
+	}
+	sscanf(buffer, "%s", cmd);
+	if(strcmp("START", cmd ) != 0){
+		salir_correctamente(EXIT_FAILURE);
+	}
+	bzero(cmd, MAXDATASIZE);
+	sscanf(buffer, "%*s %s %d %d", nombreVS, &nFilas, &nColumnas);
+	char tablero[nFilas][nColumnas];
+	for (int i = 0; i < nFilas; ++i)
+		for (int j = 0; j < nColumnas; ++j)
+			tablero[i][j] = 'A';
+	printf("[+] Nombre adversario: %s\n", nombreVS);
+
 	while(1){
 
-		int nFilas, nColumnas, opponent;
-		char nombreVS[16];
-		char player = 'O';
-		char playerVS = 'X';
-
-		if(fgets(buffer, MAXDATASIZE, server_f) ==  NULL){
-			perror("fgets failed");
-			salir_correctamente(EXIT_FAILURE);
-		}
-		sscanf(buffer, "%s", cmd);
-		if(strcmp("START", cmd ) != 0){
-			salir_correctamente(EXIT_FAILURE);
-		}
-		bzero(cmd, MAXDATASIZE);
-		sscanf("%*s %s %d %d", nombreVS, &nFilas, &nColumnas);
-		char tablero[nFilas][nColumnas];
-		for (int i = 0; i < count; ++i)
-			for (int i = 0; i < count; ++i)
-				tablero[i][j] = 'A';
-		printf("[+] Nombre adversario: %s\n", nombreVS);
+		int opponent, col;;
 
 		if(fgets(buffer, MAXDATASIZE, server_f) ==  NULL){
 			perror("fgets failed");
@@ -249,29 +277,54 @@ int main(int argc, char *argv[]){
 			salir_correctamente(EXIT_SUCCESS);
 		}
 
-		sscanf(buffer,"%*s %d", &opponent);
-		meterFicha(nFilas, nColumnas, tablero, opponent, player);
-        for (int i = 0; i < nFilas; ++i){
-	    	for (int j = 0; j < nColumnas; ++j){
-	    		printf("| %c |\t", tablero[i][j]);
-	    	}
-	    	printf("\n");
-	    }	
+		if(strcmp("URTURN\n", buffer) == 0){
+			printf("[+] Empiezas jugando\n");
+			for (int i = 0; i < nFilas; ++i){
+		    	for (int j = 0; j < nColumnas; ++j){
+		    		printf("| %c |\t", tablero[i][j]);
+		    	}
+		    	printf("\n");
+		    }
+	B:		printf("[+] Introduce la columna donde desee meter la ficha: ");
+			scanf("%d", &col);
+			fprintf(server_f, "COLUMN %d\n", col);
 
-C:		printf("[+] Introduce la columna donde desee meter la ficha: ");
-		scanf("%d", col);
-		fprintf(server_f, "COLUMN %s\n", col);
+			if(fgets(buffer, MAXDATASIZE, server_f) ==  NULL){
+				perror("fgets failed");
+				salir_correctamente(EXIT_FAILURE);
+			}
+			if(strcmp("COLUMN OK\n", buffer) == 0){
+				meterFicha(nFilas, nColumnas, tablero, col, player);
+			}else if(strcmp("COLUMN ERROR\n", buffer) == 0)
+				goto B;
+			else{
+				printf("oooscasd\n");
+				salir_correctamente(EXIT_FAILURE);
+			}
+		}else{
+			sscanf(buffer,"%*s %d", &opponent);
+			meterFicha(nFilas, nColumnas, tablero, opponent, playerVS);
+	        for (int i = 0; i < nFilas; ++i){
+		    	for (int j = 0; j < nColumnas; ++j){
+		    		printf("| %c |\t", tablero[i][j]);
+		    	}
+		    	printf("\n");
+		    }	
+	C:		printf("[+] Introduce la columna donde desee meter la ficha: ");
+			scanf("%d", &col);
+			fprintf(server_f, "COLUMN %d\n", col);
 
-		if(fgets(buffer, MAXDATASIZE, server_f) ==  NULL){
-			perror("fgets failed");
-			salir_correctamente(EXIT_FAILURE);
-		}
-		if(strcmp("COLUMN OK", buffer) == 0){
-			meterFicha(nFilas, nColumnas, tablero, opponent, player);
-		}else if(strcmp("COLUMN ERROR", buffer) == 0)
-			goto C;
-		else{
-			salir_correctamente(EXIT_FAILURE);
+			if(fgets(buffer, MAXDATASIZE, server_f) ==  NULL){
+				perror("fgets failed");
+				salir_correctamente(EXIT_FAILURE);
+			}
+			if(strcmp("COLUMN OK\n", buffer) == 0){
+				meterFicha(nFilas, nColumnas, tablero, col, player);
+			}else if(strcmp("COLUMN ERROR\n", buffer) == 0)
+				goto C;
+			else{
+				salir_correctamente(EXIT_FAILURE);
+			}
 		}
 	
 	}
@@ -280,6 +333,7 @@ C:		printf("[+] Introduce la columna donde desee meter la ficha: ");
 
 int meterFicha(int nCol, int nFil, char matrix[][nCol], int col, char player){
 	
+	printf("A saber \n");
 	int z = 0; 
 	while(z < nFil){
 		if(matrix[z][col] != 'A')

@@ -236,14 +236,17 @@ int main(int argc, char const *argv[]){
 					if(connect4(nFilas, nColumnas, tablero, arrClientes[0].player) == TRUE){
 						fprintf(arrClientes[0].f, "VICTORY\n");
 						fprintf(arrClientes[1].f, "DEFEAT\n");
+						printf("1\n");
 						salir_correctamente(EXIT_SUCCESS);
 					}else if(connect4(nFilas, nColumnas, tablero, arrClientes[1].player) == TRUE){
 						fprintf(arrClientes[0].f, "DEFEAT\n");
 						fprintf(arrClientes[1].f, "VICTORY\n");
+						printf("2\n");
 						salir_correctamente(EXIT_SUCCESS);
 					}else if(TIE_FLAG == TRUE){
 						fprintf(arrClientes[0].f, "TIE\n");
 						fprintf(arrClientes[1].f, "TIE\n");
+						printf("3\n");
 						salir_correctamente(EXIT_SUCCESS);
 					}
 				}
@@ -272,7 +275,7 @@ int main(int argc, char const *argv[]){
 				        	perror("select()");
 				        	salir_correctamente(EXIT_FAILURE);
 
-				      	case 0:
+				      	//case 0:
 				       		/*for (int i = 0; i < numClientes; ++i){
 								time(&end_t);
 								printf("[+] Enviando información de tiempo a %s\n", arrClientes[i].user_id);
@@ -284,6 +287,7 @@ int main(int argc, char const *argv[]){
 							if(FD_ISSET(arrClientes[i].fd, &descriptoresLectura) ){
 								char cmd[MAXDATASIZE];
 								int tempColumna;
+								printf("7\n");
 								if(fgets(buffer, MAXDATASIZE, arrClientes[i].f) == NULL){
 									perror("fgets failed");
 									salir_correctamente(EXIT_FAILURE);
@@ -303,6 +307,7 @@ int main(int argc, char const *argv[]){
 										}
 									}
 								}else{
+									printf("5\n");
 									salir_correctamente(EXIT_SUCCESS);
 								}
 							}
@@ -369,9 +374,9 @@ int main(int argc, char const *argv[]){
 					printf("[+] Estableciendo prueba %d + %d. ", a , b);
 					fflush(stdout);
 					fprintf(c.f, "RESUELVE %d %d\n", a, b);
-				
+					printf("Hola\n");
 					if( fgets(buffer, MAXDATASIZE, c.f) == NULL){
-						perror("fgets failed");
+						perror("1fgets failed");
 						protocolError(c.f, c.fd);
 					}
 					
