@@ -280,7 +280,7 @@ int main(int argc, char const *argv[]){
 							}*/
 				      default:
 
-						for (int i = 0; i < numClientes; i++){
+						for (int i = 0; i < 2; i++){
 							if(FD_ISSET(arrClientes[i].fd, &descriptoresLectura) ){
 								char cmd[MAXDATASIZE];
 								int tempColumna;
@@ -288,11 +288,10 @@ int main(int argc, char const *argv[]){
 									perror("fgets failed");
 									salir_correctamente(EXIT_FAILURE);
 								}
-								printf("%s\n", buffer);
 
 								sscanf(buffer, "%s", cmd);
 								if(strcmp("COLUMN", cmd) == 0){
-									sscanf(buffer, "%d", &tempColumna);
+									sscanf(buffer, "%*s %d", &tempColumna);
 									if (meterFicha(nColumnas, nColumnas, tablero, tempColumna, arrClientes[i].player) == -1){
 										fprintf(arrClientes[i].f, "COLUMN ERROR\n");
 									}else{
@@ -303,6 +302,8 @@ int main(int argc, char const *argv[]){
 											fprintf(arrClientes[i - 1].f, "URTURN %d\n", tempColumna);
 										}
 									}
+								}else{
+									salir_correctamente(EXIT_SUCCESS);
 								}
 							}
 												
