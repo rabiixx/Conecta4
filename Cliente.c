@@ -122,21 +122,21 @@ int main(int argc, char *argv[]){
 	/* PROTOCOLO */
 	/*************/
 
+	if( fgets(buffer, MAXDATASIZE, server_f) == NULL){
+		perror("fgets failed");
+		protocolError(EXIT_FAILURE);
+	}
+
+	if(strcmp("FULL\n", buffer) == 0){
+		salir_correctamente(EXIT_SUCCESS);
+	}else if(strcmp("WELCOME\n", buffer) != 0){
+		salir_correctamente(EXIT_FAILURE);
+	}
+
 	if( access("username", F_OK) == -1){
 		
 		int a, b;
 		char cmd[MAXDATASIZE];
-
-		if( fgets(buffer, MAXDATASIZE, server_f) == NULL){
-			perror("fgets failed");
-			protocolError(EXIT_FAILURE);
-		}
-
-		if(strcmp("FULL\n", buffer) == 0){
-			salir_correctamente(EXIT_SUCCESS);
-		}else if(strcmp("WELCOME\n", buffer) != 0){
-			salir_correctamente(EXIT_FAILURE);
-		}
 
 		printf("[+] No existe id almacenado, realizando petición de registro\n");
 		fprintf(server_f, "REGISTRAR\n");
@@ -333,7 +333,6 @@ int main(int argc, char *argv[]){
 
 int meterFicha(int nCol, int nFil, char matrix[][nCol], int col, char player){
 	
-	printf("A saber \n");
 	int z = 0; 
 	while(z < nFil){
 		if(matrix[z][col] != 'A')
