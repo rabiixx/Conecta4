@@ -196,7 +196,7 @@ int main(int argc, char *argv[]){
 					salir_correctamente(EXIT_SUCCESS);
 				}
 
-				printf("[+] CAmbioo de nombre correcto!\n");
+				printf("[+] Nombre establecido correctamente.\n");
 
 				fclose(user_f);
 			}else
@@ -252,20 +252,19 @@ int main(int argc, char *argv[]){
 	char tablero[nFilas][nColumnas];
 	for (int i = 0; i < nFilas; ++i)
 		for (int j = 0; j < nColumnas; ++j)
-			tablero[i][j] = 'A';
+			tablero[i][j] = '*';
 	printf("[+] Nombre adversario: %s\n", nombreVS);
 
 	while(1){
 
-		int opponent, col;;
-
+		int opponent, col;
+		printf("[+] Esperando a que el adversario responda.\n", );
 		if(fgets(buffer, MAXDATASIZE, server_f) ==  NULL){
 			perror("fgets failed");
 			salir_correctamente(EXIT_FAILURE);
 		}
 		sscanf(buffer,"%s", cmd);
 		if(strcmp("URTURN", cmd) != 0){
-			printf("adios\n");
 			salir_correctamente(EXIT_FAILURE);
 		}else if(strcmp("VICTORY", cmd) == 0){
 			printf("[+] VICTORIA!\n");
@@ -279,7 +278,7 @@ int main(int argc, char *argv[]){
 		}
 
 		if(strcmp("URTURN\n", buffer) == 0){
-			printf("[+] Empiezas jugando\n");
+			printf("[+] Empiezas jugando: \n");
 			for (int i = 0; i < nFilas; ++i){
 		    	for (int j = 0; j < nColumnas; ++j){
 		    		printf("| %c |\t", tablero[i][j]);
