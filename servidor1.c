@@ -20,7 +20,9 @@
 #define MAXDATASIZE 2048	/* Tamaño del buffer */
 #define MAXNAMESIZE 16
 #define MAXUSERSIZE 12
-#define MAX_CLIENTES 2
+#define MAX_CLIENTES 6
+#define MAX_JUGADORESP 2
+#define MAX_PARTIDAS 4
 #define TRUE 1
 #define FALSE 2
 
@@ -33,9 +35,18 @@ typedef struct _jugador{
 	char player;	
 }jugador;
 
-jugador *jugadores;	 			/* Array con informacion de cada cliente en particular */
-int numClientes = 0;
-int server_socketfd;				/* Descriptor de fichero de socket servidor */
+typedef struct _partida{
+	jugador jugadores[NUM_JUGADORES];
+	int **tablero;
+	int START_FLAG;
+	int PLAYING_FLAG;
+	int numJugadores = 0;
+}partida;
+
+jugador *jugadores;	 		/* Array con informacion de cada cliente en particular */
+int numClientes = 0;		/* Numero de clientes cinectados */
+int numPartidas = 0;		/* Numero de partidas que se estan jugandose */
+int server_socketfd;		/* Descriptor de fichero de socket servidor */
 
 void salir_correctamente(int code);
 int connect4(int maxRow, int maxCol, char tablero[][maxCol], char player);
@@ -137,12 +148,12 @@ int main(int argc, char const *argv[]){
     	exit(EXIT_FAILURE);
     }
 
-	/* Varables */ 
+	/* Variables */ 
 	int nFilas = atoi(argv[2]);
 	int nColumnas = atoi(argv[3]);
-	char tablero[nFilas][nColumnas];
+	partida arrPartidas[MAX_PARTIDAS];
+	//jugadores = (jugador*)calloc(MAX_CLIENTES, sizeof(jugador));
 
-	jugadores = (jugador*)calloc(MAX_CLIENTES, sizeof(jugador));	
     int 				client_socketfd;			/* Descriptor de fichero de socket cliente */ 		
     struct sockaddr_in  server_dir;					/* Informacion sobre servidor */
     struct sockaddr_in  client_dir;					/* Informacion sobre direccion del cliente */
@@ -192,45 +203,46 @@ int main(int argc, char const *argv[]){
     /* Servidor activo */
 	while (running){
 
+
 		/* Comienzo de la partida */
-		if(numClientes == 2){
+		if(arrPartidas[i].START_FLAG == TRUE){
 			printf("[+] La partida va a comenzar!\n");
-			fprintf(jugadores[0].f, "START %s %d %d\n", jugadores[1].nombre, nFilas, nColumnas);
-			fprintf(jugadores[1].f, "START %s %d %d\n", jugadores[0].nombre, nFilas, nColumnas);
+			fprintf(arrPartidas[i].Jugadores[0].f, "START %s %d %d\n", arrPartidas[i].Jugadores[1].nombre, nFilas, nColumnas);
+			fprintf(arrPartidas[i].Jugadores[1].f, "START %s %d %d\n", arrPartidas[i].Jugadores[0].nombre, nFilas, nColumnas);
 			
 			/* Quien empieza jugando ? */
 			time_t t;
 			srand((unsigned) time(&t));
 			bool x = rand() & 1; 
 			if(x){
-				fprintf(jugadores[0].f, "URTURN\n");
-				printf("[+] %s empiezas jugando.\n", jugadores[0].nombre);					
-				jugadores[0].player = 'X';
-				jugadores[1].player = 'O';
+				fprintf(arrPartidas[i].Jugadores[0].f, "URTURN\n");
+				printf("[+] %s empiezas jugando.\n", arrPartidas[i].Jugadores[0].nombre);					
+				arrPartidas[i].Jugadores[0].player = '1';
+				arrPartidas[i].Jugadores[1].player = '-1';
 			}else{
-				fprintf(jugadores[1].f, "URTURN\n");
-				printf("[+] %s empiezas jugando.\n", jugadores[1].nombre);
-				jugadores[0].player = 'O';
-				jugadores[1].player = 'X';
+				fprintf(arrPartidas[i].Jugadores[1].f, "URTURN\n");
+				printf("[+] %s empiezas jugando.\n", arrPartidas[i].Jugadores[1].nombre);
+				arrPartidas[i].Jugadores[0].player = 'O';
+				arrPartidas[i].Jugadores[1].player = 'X';
 			}
-			printf("[+] Simbolo de %s = %c\n", jugadores[0].nombre, jugadores[0].player);
-			printf("[+] Simbolo de %s = %c\n", jugadores[1].nombre, jugadores[1].player);
+			printf("[+] Simbolo de %s = %c\n", arrPartidas[i].Jugadores[0].nombre, arrPartidas[i].Jugadores[0].player);
+			printf("[+] Simbolo de %s = %c\n", arrPartidas[i].Jugadores[1].nombre, arrPartidas[i].Jugadores[1].player);
 
 			for (int i = 0; i < nFilas; ++i)
 				for (int j = 0; j < nColumnas; ++j)
-					tablero[i][j] = '*';
+					arrPartidas[i].tablero[i][j] = '*';
 
-			jugadores[0].player = 'X';
-			jugadores[1].player = 'O';
-			numClientes = 0;
-			START_FLAG = TRUE;
+			arrPartidas[i].Jugadores[0].player = 'X';
+			arrPartidas[i].Jugadores[1].player = 'O';
+			arrPartidas[i].START_FLAG == FALSE;	
+			arrPartidas[i].PLAYING_FLAG == TRUE;
 		}
 
-		if(START_FLAG == TRUE){
+		if(arrPartidas[i].PLAYING_FLAG == TRUE){
 			
 			for (int i = 0; i < 6; ++i)
 	            for (int j = 0; j < 6; ++j){
-	                if(tablero[i][j] == -1){
+	                if(arrPartidas[i].tablero[i][j] == -1){
 	                    TIE_FLAG = FALSE;
 	                    break;
 	                }
@@ -243,19 +255,19 @@ int main(int argc, char const *argv[]){
 		    	printf("\n");
 		    }
 
-			if(connect4(nFilas, nColumnas, tablero, jugadores[0].player) == TRUE){
-				fprintf(jugadores[0].f, "VICTORY\n");
-				fprintf(jugadores[1].f, "DEFEAT\n");
+			if(connect4(nFilas, nColumnas, arrPartidas[i].tablero, arrPartidas[i].Jugadores[0].player) == TRUE){
+				fprintf(arrPartidas[i].Jugadores[0].f, "VICTORY\n");
+				fprintf(arrPartidas[i].Jugadores[1].f, "DEFEAT\n");
 				printf("[+] La partida ha finalizado\n");
 				salir_correctamente(EXIT_SUCCESS);
-			}else if(connect4(nFilas, nColumnas, tablero, jugadores[1].player) == TRUE){
-				fprintf(jugadores[0].f, "DEFEAT\n");
-				fprintf(jugadores[1].f, "VICTORY\n");
+			}else if(connect4(nFilas, nColumnas, arrPartidas[i].tablero, arrPartidas[i].jugadores[1].player) == TRUE){
+				fprintf(arrPartidas[i].Jugadores[0].f, "DEFEAT\n");
+				fprintf(arrPartidas[i].Jugadores[1].f, "VICTORY\n");
 				printf("[+] La partida a finalizado.\n");
 				salir_correctamente(EXIT_SUCCESS);
 			}else if(TIE_FLAG == TRUE){
-				fprintf(jugadores[0].f, "TIE\n");
-				fprintf(jugadores[1].f, "TIE\n");
+				fprintf(arrPartidas[i].Jugadores[0].f, "TIE\n");
+				fprintf(arrPartidas[i].Jugadores[1].f, "TIE\n");
 				printf("[+] La partida ha finalizado\n");
 				salir_correctamente(EXIT_SUCCESS);
 			}
@@ -267,8 +279,13 @@ int main(int argc, char const *argv[]){
 		FD_SET(server_socketfd, &readfds);
 		maximo = server_socketfd;
 
-		FD_SET (jugadores[0].fd, &readfds);
-		FD_SET (jugadores[1].fd, &readfds);
+		for (int i = 0; i < numPartidas; ++i){
+		
+
+		}
+
+		FD_SET(jugadores[0].fd, &readfds);
+		FD_SET(jugadores[1].fd, &readfds);
 		maximo = max(server_socketfd, jugadores[0].fd);
 		maximo = max(maximo, jugadores[1].fd);
 
@@ -292,42 +309,43 @@ int main(int argc, char const *argv[]){
 				}*/
 	      default:
 
-			for (int i = 0; i < 2; i++){
-				if(FD_ISSET(jugadores[i].fd, &readfds) ){
-					char cmd[MAXDATASIZE];
-					int tempColumna;
-					printf("7\n");
-					if(fgets(buffer, MAXDATASIZE, jugadores[i].f) == NULL){
-						perror("fgets failed");
-						salir_correctamente(EXIT_FAILURE);
-					}
-
-					sscanf(buffer, "%s", cmd);
-					if(strcmp("COLUMN", cmd) == 0){
-						sscanf(buffer, "%*s %d", &tempColumna);
-						if (meterFicha(nColumnas, nColumnas, tablero, tempColumna, jugadores[i].player) == -1)
-							fprintf(jugadores[i].f, "COLUMN ERROR\n");
-						else{
-							fprintf(jugadores[i].f, "COLUMN OK\n");
-							if(i == 0){
-								fprintf(jugadores[i + 1].f, "URTURN %d\n", tempColumna);
-								printf("[+] Es el turno de %s.\n", jugadores[i + 1].nombre);
-							}else if(i == 1){
-								fprintf(jugadores[i - 1].f, "URTURN %d\n", tempColumna);
-								printf("[+] Es el turno de %s.\n", jugadores[i - 1].nombre);
-							}
+			for (int i = 0; i < MAX_PARTIDAS; i++){
+				for (int j = 0; j < MAX_JUGADORESP; ++j){
+					if(FD_ISSET(arrPartidas[i].Jugadores[j].fd, &readfds) ){
+						char cmd[MAXDATASIZE];
+						int tempColumna;
+						printf("7\n");
+						if(fgets(buffer, MAXDATASIZE, jugadores[i].f) == NULL){
+							perror("fgets failed");
+							salir_correctamente(EXIT_FAILURE);
 						}
-					}else{
-						salir_correctamente(EXIT_SUCCESS);
+
+						sscanf(buffer, "%s", cmd);
+						if(strcmp("COLUMN", cmd) == 0){
+							sscanf(buffer, "%*s %d", &tempColumna);
+							if (meterFicha(nColumnas, nColumnas, tablero, tempColumna, jugadores[i].player) == -1)
+								fprintf(jugadores[i].f, "COLUMN ERROR\n");
+							else{
+								fprintf(jugadores[i].f, "COLUMN OK\n");
+								if(i == 0){
+									fprintf(jugadores[i + 1].f, "URTURN %d\n", tempColumna);
+									printf("[+] Es el turno de %s.\n", jugadores[i + 1].nombre);
+								}else if(i == 1){
+									fprintf(jugadores[i - 1].f, "URTURN %d\n", tempColumna);
+									printf("[+] Es el turno de %s.\n", jugadores[i - 1].nombre);
+								}
+							}
+						}else{
+							salir_correctamente(EXIT_SUCCESS);
+						}
 					}
+										
+					if (FD_ISSET(jugadores[i].fd, &except_fds)) {
+			        	printf("except_fds for server.\n");
+			        	salir_correctamente(EXIT_FAILURE);
+			        }
 				}
-									
-				if (FD_ISSET(jugadores[i].fd, &except_fds)) {
-		        	printf("except_fds for server.\n");
-		        	salir_correctamente(EXIT_FAILURE);
-		        }
 			}
-		}
 
 
 
@@ -335,9 +353,15 @@ int main(int argc, char const *argv[]){
 		 * admite */
 		if (FD_ISSET (server_socketfd, &readfds) ){
 
-			/* Nuevo cliente */
+			int i;
+			/* Se compruba si existe alguna partida disponible */
+			for (i = 0; i < MAX_PARTIDAS; ++i)
+				if(arrPartidas[i].numJugadores < 2)
+					break;
+
+			/* Nuevo jugador */
 			jugador c;
-			(numClientes)++;
+			//(numClientes)++;
 
 			/* Acepta la conexión con el cliente, guardándola en el array */
 			addrlen = sizeof(client_dir);
@@ -425,7 +449,15 @@ int main(int argc, char const *argv[]){
 						fprintf(c.f, "REGISTRADO ERROR\n");
 						protocolError(c.f, c.fd);
 					}
-					jugadores[numClientes - 1] = c;
+					arrPartidas[i].Jugadores[arrPartidas[i].numJugadores] = c;
+					arrPartidas[i].numJugadores++;
+					if(arrPartidas[i].numClientes == 2){
+						arrPartidas[i].START_FLAG = TRUE;
+						arrPartidas[i].tablero = (int**)malloc(nFil * sizeof(int*));
+						for (int i = 0; i < nCol; ++i){
+							arrPartidas[i].tablero = (int*)malloc(nCol * sizeof(int));
+						}
+					}
 				}else if( strcmp("LOGIN", cmd) == 0){	
 					char tempUser_id[MAXUSERSIZE];
 					char tempName[MAXNAMESIZE];
@@ -457,8 +489,16 @@ int main(int argc, char const *argv[]){
 						fclose(usersDB);
 						protocolError(c.f, c.fd);
 					}
-					printf("[+] Numero de usuarios conectados: %d\n",numClientes );
-					jugadores[numClientes - 1] = c;
+					printf("[+] Numero de usuarios conectados: %d\n", numClientes);
+					arrPartidas[i].Jugadores[arrPartidas[i].numJugadores] = c;
+					arrPartidas[i].numJugadores++;
+					if(arrPartidas[i].numClientes == 2){
+						arrPartidas[i].START_FLAG = TRUE;
+						arrPartidas[i].tablero = (int**)malloc(nFil * sizeof(int*));
+						for (int i = 0; i < nCol; ++i){
+							arrPartidas[i].tablero = (int*)malloc(nCol * sizeof(int));
+						}
+					}
 				}else{
 					protocolError(c.f, c.fd);
 				}
