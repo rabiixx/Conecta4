@@ -176,6 +176,9 @@ int main(int argc, char const *argv[]){
 		for (int j = 0; j < nColumnas; ++j){
 			p_inic.tablero[j] = (int*)malloc(nColumnas * sizeof(int));
 		}
+		for (int i = 0; i < nFilas; ++i)
+			for (int j = 0; j < nColumnas; ++j)
+				p_inic.tablero[i][j] = 0;
 
 	for (int i = 0; i < MAX_PARTIDAS; ++i)
 		arrPartidas[i] = p_inic;
@@ -258,9 +261,9 @@ int main(int argc, char const *argv[]){
 				printf("[+] Simbolo de %s = %d\n", arrPartidas[i].Jugadores[0].nombre, arrPartidas[i].Jugadores[0].player);
 				printf("[+] Simbolo de %s = %d\n", arrPartidas[i].Jugadores[1].nombre, arrPartidas[i].Jugadores[1].player);
 
-				for (int i = 0; i < nFilas; ++i)
+				for (int z = 0; z < nFilas; ++z)
 					for (int j = 0; j < nColumnas; ++j)
-						arrPartidas[i].tablero[i][j] = 0;
+						arrPartidas[i].tablero[z][j] = 0;
 
 				arrPartidas[i].START_FLAG = FALSE;	
 				arrPartidas[i].PLAYING_FLAG = TRUE;
@@ -269,17 +272,18 @@ int main(int argc, char const *argv[]){
 			/* Comprobar finalizacion de partida */
 			if(arrPartidas[i].PLAYING_FLAG == TRUE){
 				
-				for (int i = 0; i < nFilas; ++i)
+				for (int z = 0; z < nFilas; ++z)
 		            for (int j = 0; j < nColumnas; ++j){
-		                if(arrPartidas[i].tablero[i][j] == 0){
+		                if(arrPartidas[i].tablero[z][j] == 0){
 		                    TIE_FLAG = FALSE;
 		                    break;
 		                }
 		            }
 
-		        for (int i = 0; i < nFilas; ++i){
+		        for (int z = 0; z < nFilas; ++z){
 			    	for (int j = 0; j < nColumnas; ++j){
-			    		printf("| %c |\t", arrPartidas[i].tablero[i][j]);
+			    		printf("| %d |\t", arrPartidas[i].tablero[z][j]);
+			    		printf("hola");
 			    	}
 			    	printf("\n");
 			    }
@@ -376,7 +380,9 @@ int main(int argc, char const *argv[]){
 				/* Se comprueba si algún cliente nuevo desea conectarse y se le
 				 * admite */
 				if (FD_ISSET (server_socketfd, &readfds) ){
+				
 					int i;
+				
 					/* Se compruba si existe alguna partida disponible */
 					for (i = 0; i < MAX_PARTIDAS; ++i){
 						if( arrPartidas[i].numJugadores < 2){
@@ -518,12 +524,12 @@ int main(int argc, char const *argv[]){
 									printf("[+] Numero de usuarios conectados: %d\n", numClientes);
 									if(arrPartidas[i].numJugadores == 0){
 										arrPartidas[i].Jugadores[0] = c;
-										printf("Matchmaking. Wait a momemnt man...\n");
+										printf("[+] Matchmaking. Wait a momemnt man...\n");
 									}else if(arrPartidas[i].numJugadores == 1){
 										arrPartidas[i].Jugadores[1] = c;
 										arrPartidas[i].START_FLAG = TRUE;
 										numPartidas++;
-										printf("Preparense, la partida esta apunto de cpmenzar!\n");
+										printf("[+] Preparense, la partida esta apunto de cpmenzar!\n");
 									}
 
 									arrPartidas[i].numJugadores++;
@@ -531,8 +537,8 @@ int main(int argc, char const *argv[]){
 									protocolError(c.f, c.fd);
 								}
 							}
-							break;
 						}
+						break;
 					}
 					if(i == numPartidas){
 						printf("[+] Todas las partidas estan llenas. Vuelva a intentarlo en un rato.\n");
