@@ -9,7 +9,7 @@ objetivo1: cliente1.c servidor1.c
 	gcc cliente1.c -o cliente1 -Wall -pedantic
 	gcc servidor1.c -o servidor1 -Wall -pedantic
 
-objetivo1: cliente1.c servidor1.c
+objetivo2: cliente1.c servidor1.c
 	gcc servidor2.c -o servidor2 -Wall -pedantic
 
 objetivo3: cliente3.c servidor3.c

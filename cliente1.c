@@ -258,7 +258,7 @@ int main(int argc, char *argv[]){
 	while(1){
 
 		int opponent, col;
-		printf("[+] Esperando a que el adversario responda.\n", );
+		printf("[+] Esperando a que el adversario responda...\n");
 		if(fgets(buffer, MAXDATASIZE, server_f) ==  NULL){
 			perror("fgets failed");
 			salir_correctamente(EXIT_FAILURE);
