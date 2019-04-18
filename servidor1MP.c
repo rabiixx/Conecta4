@@ -33,17 +33,17 @@ typedef struct _jugador{
 	char *nombre;				/* Nobre del cliente */
 	char *user_id;				/* id del usuario */
 	int res;					/* Resultado de la operacion, enviada por el cliente */
-	int player;	
+	int player;					/* Ficha del jugador */
 }jugador;
 
 /* Informacion sobre la partida */
 typedef struct _partida{
-	jugador Jugadores[MAX_JUGADORESP];
-	int **tablero;
-	int START_FLAG;
-	int PLAYING_FLAG;
-	int END_FLAG;
-	int numJugadores;
+	jugador Jugadores[MAX_JUGADORESP];		/* Array de los jugadores que jugaran la partidas */
+	int **tablero;							/* Tablero de la partida */
+	int START_FLAG;							/* Indica que la partida esta lista para comenzar */
+	int PLAYING_FLAG;						/* Indica que la partida esta en juego */
+	int END_FLAG;							/* Indica que la partidas ha finlizado */
+	int numJugadores;						/* Indica el numero de jugadores conectados a la partida */
 }partida;
 
 /* Variables globales */
@@ -54,11 +54,16 @@ partida arrPartidas[MAX_PARTIDAS];	/* Array con los datos de cada partida */
 
 /* Definicion de funciones */
 void salir_correctamente(int code);
+
 int connect4(int maxRow, int maxCol, int **tablero, int player);
+
 int meterFicha(int nCol, int nFil, int **matrix, int col, int player);
+
 int max(int, int);
-void clearPartida(int, int);
-//void compactaClaves() ;
+
+void clearPartida(int);
+
+void compactaClavesP(void);
 
 
 /* Declaracion de funciones */
@@ -124,13 +129,11 @@ int setup_signals(){
 
 void salir_correctamente(int code){
 
-
 	for (int i = 0; i < numPartidas; ++i){
 		fclose(arrPartidas[i].Jugadores[0].f);
 		fclose(arrPartidas[i].Jugadores[1].f);
 		close(arrPartidas[i].Jugadores[0].fd);
 		close(arrPartidas[i].Jugadores[1].fd);
-
 	}
 
   	close(server_socketfd);
@@ -141,8 +144,6 @@ void salir_correctamente(int code){
 
 void protocolError(FILE *f, int fd){
 
-	printf("Socket Protocol Error.\n");
-	numClientes--;
 	fclose(f);
 	close(fd);
 }
@@ -164,24 +165,6 @@ int main(int argc, char const *argv[]){
 	/* Variables */ 
 	int nFilas = atoi(argv[2]);
 	int nColumnas = atoi(argv[3]);
-	
-	/* Inicializacion de partidas */ 
-	partida p_inic;
-		p_inic.START_FLAG = FALSE;
-		p_inic.PLAYING_FLAG = FALSE;
-		p_inic.END_FLAG = FALSE;
-		p_inic.numJugadores = 0;
-		p_inic.tablero = (int**)malloc(nFilas * sizeof(int*));
-		for (int j = 0; j < nColumnas; ++j){
-			p_inic.tablero[j] = (int*)malloc(nColumnas * sizeof(int));
-		}
-		for (int i = 0; i < nFilas; ++i)
-			for (int j = 0; j < nColumnas; ++j)
-				p_inic.tablero[i][j] = 0;
-
-	for (int i = 0; i < MAX_PARTIDAS; ++i)
-		arrPartidas[i] = p_inic;
-	
 
 	/* Variables Sockets */
     int 				client_socketfd;			/* Descriptor de fichero de socket cliente */ 		
@@ -192,9 +175,13 @@ int main(int argc, char const *argv[]){
 	int 				Puerto = atoi(argv[1]);		/* Puerto de escucha */    
 	int running = 1;								/* Servidor en funcionamiento */
 	FILE *usersDB = NULL;							/* Base de datos: Fichero con nombre de usuario, resultado y nombre de todos los usuarios */
-
 	int TIE_FLAG = -1;
     
+    for (int i = 0; i < MAX_PARTIDAS; ++i){
+    	arrPartidas[i].numJugadores = 0;
+    }
+
+
     /* Select */
 	fd_set readfds;						/* Descriptores de interes para select() */
 	fd_set except_fds;								/* Control de excepciones */
@@ -234,7 +221,7 @@ int main(int argc, char const *argv[]){
 
 		/* Comprobamos si hay alguna partida para comenzar 
 		* o si bien hay alguna partida que haya finalizado */
-		for (int i = 0; i < numPartidas; ++i){
+H:		for (int i = 0; i < numPartidas; ++i){
 
 			/* Comienzo de la partida */
 			if (arrPartidas[i].START_FLAG == TRUE){
@@ -267,45 +254,14 @@ int main(int argc, char const *argv[]){
 				arrPartidas[i].START_FLAG = FALSE;	
 				arrPartidas[i].PLAYING_FLAG = TRUE;
 			}
-
-			/* Comprobar finalizacion de partida */
-			if (arrPartidas[i].PLAYING_FLAG == TRUE){
-				
-				for (int z = 0; z < nFilas; ++z)
-		            for (int j = 0; j < nColumnas; ++j){
-		                if (arrPartidas[i].tablero[z][j] == 0){
-		                    TIE_FLAG = FALSE;
-		                    break;
-		                }
-		            }
-
-		        for (int z = 0; z < nFilas; ++z){
-			    	for (int j = 0; j < nColumnas; ++j){
-			    		printf("| %d |\t", arrPartidas[i].tablero[z][j]);
-			    	}
-			    	printf("\n");
-			    }
-
-				if (connect4(nFilas, nColumnas, arrPartidas[i].tablero, arrPartidas[i].Jugadores[0].player) == TRUE){
-					fprintf(arrPartidas[i].Jugadores[0].f, "VICTORY\n");
-					fprintf(arrPartidas[i].Jugadores[1].f, "DEFEAT\n");
-					printf("[+] La partida ha finalizado\n");
-					clearPartida(nFilas, nColumnas);
-				}else if (connect4(nFilas, nColumnas, arrPartidas[i].tablero, arrPartidas[i].Jugadores[1].player) == TRUE){
-					fprintf(arrPartidas[i].Jugadores[0].f, "DEFEAT\n");
-					fprintf(arrPartidas[i].Jugadores[1].f, "VICTORY\n");
-					printf("[+] La partida a finalizado.\n");
-					clearPartida(nFilas, nColumnas);
-				}else if (TIE_FLAG == TRUE){
-					fprintf(arrPartidas[i].Jugadores[0].f, "TIE\n");
-					fprintf(arrPartidas[i].Jugadores[1].f, "TIE\n");
-					printf("[+] La partida ha finalizado\n");
-					clearPartida(nFilas, nColumnas);
-				}
-			}
 		}
 
-		//compactaClaves();
+		compactaClavesP();
+
+		printf("[+] Numero de partidas en juego: %d\n", numPartidas);
+		for (int i = 0; i < numPartidas; ++i) {
+			printf("\t- Partida %d: %s VS %s\n", i, arrPartidas[i].Jugadores[0].nombre, arrPartidas[i].Jugadores[1].nombre);
+		}
 	
 		FD_ZERO (&readfds);
 		FD_SET (server_socketfd, &readfds);
@@ -349,21 +305,67 @@ int main(int argc, char const *argv[]){
 							}
 
 							sscanf(buffer, "%s", cmd);
-							if (strcmp("COLUMN", cmd) == 0){
+							if (strcmp("COLUMN", cmd) == 0) {
 								sscanf(buffer, "%*s %d", &tempColumna);
-								if (meterFicha(nColumnas, nColumnas,  arrPartidas[i].tablero, tempColumna, arrPartidas[i].Jugadores[j].player) == -1)
+								if (meterFicha(nColumnas, nColumnas,  arrPartidas[i].tablero, tempColumna, arrPartidas[i].Jugadores[j].player) == -1){
 									fprintf(arrPartidas[i].Jugadores[j].f, "COLUMN ERROR\n");
-								else{
-									fprintf(arrPartidas[i].Jugadores[j].f, "COLUMN OK\n");
-									if(j == 0){
+								} else {
+
+									printf("\t- Partida %d: %s VS %s\n", i, arrPartidas[i].Jugadores[0].nombre, arrPartidas[i].Jugadores[1].nombre);
+									for (int z = 0; z < nFilas; ++z)
+							            for (int j = 0; j < nColumnas; ++j){
+							                if (arrPartidas[i].tablero[z][j] == 0){
+							                    TIE_FLAG = FALSE;
+							                    break;
+							                }
+							            }
+
+							        printf("[+] Partida %d: %s VS %s\n", i, arrPartidas[i].Jugadores[0].nombre, arrPartidas[i].Jugadores[1].nombre);
+							        for (int z = 0; z < nFilas; ++z){
+								    	for (int j = 0; j < nColumnas; ++j){
+								    		printf("| %d |\t", arrPartidas[i].tablero[z][j]);
+								    	}
+								    	printf("\n");
+								    }
+								    printf("\n\n");
+
+									fprintf(arrPartidas[i].Jugadores[j].f, "COLUMN OK\n");	
+									if (connect4(nFilas, nColumnas, arrPartidas[i].tablero, arrPartidas[i].Jugadores[j].player) == TRUE){
+										if (j == 0) {
+											fprintf(arrPartidas[i].Jugadores[j].f, "VICTORY\n");
+											fprintf(arrPartidas[i].Jugadores[j + 1].f, "DEFEAT\n");
+											printf("[+] La partida %d ha finalizado\n", i);
+											clearPartida(i);
+										} else if(j == 1) {
+											fprintf(arrPartidas[i].Jugadores[j].f, "VICTORY\n");
+											fprintf(arrPartidas[i].Jugadores[j - 1].f, "DEFEAT\n");
+											printf("[+] La partida %d ha finalizado\n", i);
+											clearPartida(i);
+										}
+									} else if (TIE_FLAG == TRUE) {
+										fprintf(arrPartidas[i].Jugadores[0].f, "TIE\n");
+										fprintf(arrPartidas[i].Jugadores[1].f, "TIE\n");
+										printf("[+] La partida %d ha finalizado\n", i);
+										clearPartida(i);
+									}
+
+									if (j == 0) {
 										fprintf(arrPartidas[i].Jugadores[j + 1].f, "URTURN %d\n", tempColumna);
 										printf("[+] Es el turno de %s.\n", arrPartidas[i].Jugadores[j + 1].nombre);
-									}else if(j == 1){
+									} else if (j == 1) {
 										fprintf(arrPartidas[i].Jugadores[j - 1].f, "URTURN %d\n", tempColumna);
 										printf("[+] Es el turno de %s.\n", arrPartidas[i].Jugadores[j - 1].nombre);
 									}
 								}
-							}else{
+							} else if(strcmp("SALIR", cmd) == 0) {
+				       			printf("[+] Partida %d interrumpida.\n", i);
+						       	printf("[+] Jugador %s ha cerrado la conexión\n", arrPartidas[i].Jugadores[j].nombre);
+						       	if(j == 1)
+						       		fprintf(arrPartidas[i].Jugadores[j - 1].f, "SALIR\n");
+								else if(j == 0)
+									fprintf(arrPartidas[i].Jugadores[j + 1].f, "SALIR\n");
+								clearPartida(i);
+							} else {
 								salir_correctamente(EXIT_SUCCESS);
 							}
 
@@ -378,22 +380,6 @@ int main(int argc, char const *argv[]){
 				/* Se comprueba si algún cliente nuevo desea conectarse y se le
 				 * admite */
 				if (FD_ISSET (server_socketfd, &readfds) ){
-					
-					printf("Nuevo jugador\n");
-					int i;
-
-					/* Se compruba si existe alguna partida disponible */
-					for (i = 0; i < MAX_PARTIDAS; ++i)
-						if (arrPartidas[i].numJugadores < 2)
-							break;
-
-					printf("Valor de la i: %d\n", i);
-					if(i == MAX_PARTIDAS){
-						printf("Todas las partidas completas. Vuelva a intentarlo dentro de un rato\n");
-					}
-							
-					/* Nuevo jugador */
-					jugador c;
 
 					/* Acepta la conexión con el cliente, guardándola en el array */
 					addrlen = sizeof(client_dir);
@@ -404,12 +390,39 @@ int main(int argc, char const *argv[]){
 						exit(EXIT_FAILURE);
 					}
 
+					/* Nuevo jugador */
+					jugador c;
+
 					c.fd = client_socketfd;
 					if( (c.f = fdopen(c.fd, "r+")) == NULL){
 						perror("fdopen failed");
 						protocolError(c.f, c.fd);
 					}
 					setbuf(c.f, NULL);
+					
+					if (numPartidas > MAX_PARTIDAS) {
+						fprintf(c.f, "FULL\n");
+						printf("[+] Nueva conexión denegada, número máximo de partidas alcanzado\n");
+						protocolError(c.f, c.fd);
+						goto H;
+					} else if (arrPartidas[numPartidas].numJugadores == 0){			
+
+						/* Nueva partida */ 
+						partida p;
+						p.START_FLAG = FALSE;
+						p.PLAYING_FLAG = FALSE;
+						p.END_FLAG = FALSE;
+						p.tablero = (int**)malloc(nFilas * sizeof(int*));
+						for (int j = 0; j < nColumnas; ++j){
+							p.tablero[j] = (int*)malloc(nColumnas * sizeof(int));
+						}
+						for (int i = 0; i < nFilas; ++i)
+							for (int j = 0; j < nColumnas; ++j)
+								p.tablero[i][j] = 0;
+
+						arrPartidas[numPartidas] = p;
+					}
+					arrPartidas[numPartidas].numJugadores++;
 
 					fprintf(c.f, "WELCOME\n");
 
@@ -432,7 +445,6 @@ int main(int argc, char const *argv[]){
 						printf("[+] Estableciendo prueba %d + %d. ", a , b);
 						fflush(stdout);
 						fprintf(c.f, "RESUELVE %d %d\n", a, b);
-						printf("Hola\n");
 						if( fgets(buffer, MAXDATASIZE, c.f) == NULL){
 							perror("1fgets failed");
 							protocolError(c.f, c.fd);
@@ -473,26 +485,18 @@ int main(int argc, char const *argv[]){
 							fprintf(c.f, "REGISTRADO ERROR\n");
 							protocolError(c.f, c.fd);
 						}
-						printf("[+] Numero de usuarios conectados: %d\n", numClientes);
 						
-						if(arrPartidas[i].numJugadores == 0){
-							printf("Valor de la i: %d\n", i);
+						if (arrPartidas[numPartidas].numJugadores == 1) {
 							c.player = 1;
-							arrPartidas[i].Jugadores[0] = c;
-							printf("Matchmaking. Wait a momemnt man...\n");
-							printf("Partida 0: %s vs %s\n", arrPartidas[0].Jugadores[0].nombre, arrPartidas[0].Jugadores[1].nombre);
-							printf("Partida %d: %s\n", i, arrPartidas[i].Jugadores[0].nombre);
-						}else if(arrPartidas[i].numJugadores == 1){
+							arrPartidas[numPartidas].Jugadores[0] = c;
+							printf("[+] Matchmaking. Wait a momemnt man...\n");
+						} else if(arrPartidas[numPartidas].numJugadores == 2) {
 							c.player = -1;
-							arrPartidas[i].Jugadores[1] = c;
-							arrPartidas[i].START_FLAG = TRUE;
+							arrPartidas[numPartidas].Jugadores[1] = c;
+							arrPartidas[numPartidas].START_FLAG = TRUE;
+							printf("[+] La partida %d esta apunto de comenzar.\n", numPartidas);
 							numPartidas++;
-							printf("Partida 0: %s vs %s\n", arrPartidas[0].Jugadores[0].nombre, arrPartidas[0].Jugadores[1].nombre);
-							printf("Partida %d: %s\n", i, arrPartidas[i].Jugadores[1].nombre);
-							printf("Preparense, la partida esta apunto de cpmenzar!\n");
-						}
-
-						arrPartidas[i].numJugadores++;
+						} 
 
 					}else if( strcmp("LOGIN", cmd) == 0){	
 						
@@ -526,18 +530,20 @@ int main(int argc, char const *argv[]){
 							fclose(usersDB);
 							protocolError(c.f, c.fd);
 						}
-						printf("[+] Numero de usuarios conectados: %d\n", numClientes);
-						if(arrPartidas[i].numJugadores == 0){
-							arrPartidas[i].Jugadores[0] = c;
+						printf("[+] Numero de partidas en juego: %d\n", numPartidas);
+						
+						if(arrPartidas[numPartidas].numJugadores == 1){
+							c.player = 1;
+							arrPartidas[numPartidas].Jugadores[0] = c;
 							printf("[+] Matchmaking. Wait a momemnt man...\n");
-						}else if(arrPartidas[i].numJugadores == 1){
-							arrPartidas[i].Jugadores[1] = c;
-							arrPartidas[i].START_FLAG = TRUE;
+						}else if(arrPartidas[numPartidas].numJugadores == 2){
+							c.player = -1;
+							arrPartidas[numPartidas].Jugadores[1] = c;
+							arrPartidas[numPartidas].START_FLAG = TRUE;
+							printf("[+] La partida %d esta apunto de comenzar.\n", numPartidas);
 							numPartidas++;
-							printf("[+] Preparense, la partida esta apunto de cpmenzar!\n");
 						}
 
-						arrPartidas[i].numJugadores++;
 					}else{
 						protocolError(c.f, c.fd);
 					}	
@@ -547,25 +553,27 @@ int main(int argc, char const *argv[]){
 	return EXIT_SUCCESS;
 }
 
-/*void compactaClaves(void){
+/* Elimina las partidas finalizadas del array de partidas */
+void compactaClavesP(void){
 
-	if ((jugadores == NULL) || ((numClientes) == 0))
+	if ((arrPartidas == NULL) || (numPartidas == 0) )
 		return;
 
 	int j = 0;
-	for (int i = 0; i < (numClientes); i++){
-		if (jugadores[i].fd != -1){
-			jugadores[j] = jugadores[i];
+	for (int i = 0; i < numPartidas; i++){
+		if (arrPartidas[i].END_FLAG != -1){
+			arrPartidas[j] = arrPartidas[i];
+			arrPartidas[i].numJugadores = 0;
 			j++;
 		}
 	}
 	
-	numClientes = j;
-}*/
+	numPartidas = j;
+}
 
 /*https://gist.github.com/Alexey-N-Chernyshov/4634731*/
 
-
+/* Mete una la ficha player en la columna col en el tablero, si es posible */
 int meterFicha(int nCol, int nFil, int **matrix, int col, int player){
 	
 	if(col >= nCol)
@@ -586,10 +594,11 @@ int meterFicha(int nCol, int nFil, int **matrix, int col, int player){
 }
 
 
+/* Comprueba si la partida a finlizado */
 int connect4(int maxRow, int maxCol, int **tablero, int player)
 {
 
-    // horizontalCheck 
+    // Verificacion horizontal
     for (int j = 0; j<maxRow-3 ; j++ ){
         for (int i = 0; i<maxCol; i++){
             if (tablero[i][j] == player && tablero[i][j+1] == player && tablero[i][j+2] == player && tablero[i][j+3] == player){
@@ -597,7 +606,7 @@ int connect4(int maxRow, int maxCol, int **tablero, int player)
             }           
         }
     }
-    // verticalCheck
+    //Verificacion vertical
     for (int i = 0; i<maxCol-3 ; i++ ){
         for (int j = 0; j<maxRow; j++){
             if (tablero[i][j] == player && tablero[i+1][j] == player && tablero[i+2][j] == player && tablero[i+3][j] == player){
@@ -606,7 +615,7 @@ int connect4(int maxRow, int maxCol, int **tablero, int player)
         }
     }
  
-    // ascendingDiagonalCheck 
+    // Verificacion diagonal ascendiente 
     for (int i=3; i<maxCol; i++){
         for (int j=0; j<maxRow-3; j++){
             if (tablero[i][j] == player && tablero[i-1][j+1] == player && tablero[i-2][j+2] == player && tablero[i-3][j+3] == player)
@@ -614,7 +623,7 @@ int connect4(int maxRow, int maxCol, int **tablero, int player)
         }
     }
 
-    // descendingDiagonalCheck
+    // Verificacion diagonal descendiente
     for (int i=3; i<maxCol; i++){
         for (int j=3; j<maxRow; j++){
             if (tablero[i][j] == player && tablero[i-1][j-1] == player && tablero[i-2][j-2] == player && tablero[i-3][j-3] == player)
@@ -629,25 +638,13 @@ int max(int a, int b){
 	return (a > b) ? a : b;
 }
 
-void clearPartida(int nFil, int nCol){
+void clearPartida(int i){
 
-	for (int i = 0; i < numPartidas; ++i)
-		if(arrPartidas[i].END_FLAG == TRUE){
+	arrPartidas[i].END_FLAG = -1;
+	//arrPartidas[i].numJugadores = 0;
+	fclose(arrPartidas[i].Jugadores[0].f);
+	fclose(arrPartidas[i].Jugadores[1].f);
+	close(arrPartidas[i].Jugadores[0].fd);
+	close(arrPartidas[i].Jugadores[1].fd);
 
-			/* Reiniciamos tablero */
-			for (int j = 0; j < nFil; ++j)
-				for (int i = 0; i < nCol; ++i)
-					arrPartidas[i].tablero[i][j] = 0;
-
-			free(arrPartidas[i].Jugadores);
-			arrPartidas[i].numJugadores = 0;
-			arrPartidas[i].START_FLAG = FALSE;
-			arrPartidas[i].PLAYING_FLAG = FALSE;
-			arrPartidas[i].END_FLAG = FALSE;
-			arrPartidas[i].Jugadores[0].fd = -1;
-			arrPartidas[i].Jugadores[1].fd = -1;
-		}
-
-
-	numPartidas--;
 }

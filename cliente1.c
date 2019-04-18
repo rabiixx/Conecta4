@@ -234,20 +234,23 @@ int main(int argc, char *argv[]){
 
 
 	char cmd[MAXDATASIZE];
-	int nFilas, nColumnas;
-	char nombreVS[100];
-	char player = 'O';
-	char playerVS = 'X';
+	int nFilas, nColumnas;	/* Numero de filas y columnas de la matriz */
+	char nombreVS[100];		/* Nombre del jugador contrincante */
+	char player = 'O';		/* Mi ficha */
+	char playerVS = 'X';	/* Ficha del jugador contrincante */
+	
 	/* START */
-	if(fgets(buffer, MAXDATASIZE, server_f) ==  NULL){
+	if (fgets(buffer, MAXDATASIZE, server_f) ==  NULL){
 		perror("fgets failed");
 		salir_correctamente(EXIT_FAILURE);
 	}
 	sscanf(buffer, "%s", cmd);
+
 	if(strcmp("START", cmd ) != 0){
 		salir_correctamente(EXIT_FAILURE);
 	}
 	bzero(cmd, MAXDATASIZE);
+
 	sscanf(buffer, "%*s %s %d %d", nombreVS, &nFilas, &nColumnas);
 	char tablero[nFilas][nColumnas];
 	for (int i = 0; i < nFilas; ++i)
@@ -257,27 +260,32 @@ int main(int argc, char *argv[]){
 
 	while(1){
 
-		int opponent, col;
+		int opponent;		/* Columna en la que el jugador adversario metio la ficha por ultima vez */			
+		int col;			/* Almacenar donde meto la ficha */
 		printf("[+] Esperando a que el adversario responda...\n");
 		if(fgets(buffer, MAXDATASIZE, server_f) ==  NULL){
 			perror("fgets failed");
 			salir_correctamente(EXIT_FAILURE);
 		}
 		sscanf(buffer,"%s", cmd);
-		if(strcmp("URTURN", cmd) != 0){
-			salir_correctamente(EXIT_FAILURE);
-		}else if(strcmp("VICTORY", cmd) == 0){
+
+		if (strcmp("VICTORY", cmd) == 0) {
 			printf("[+] VICTORIA!\n");
 			salir_correctamente(EXIT_SUCCESS);
-		}else if(strcmp("DEFEAT", cmd) == 0){
+		} else if (strcmp("DEFEAT", cmd) == 0) {
 			printf("[+] DERROTA!\n");
 			salir_correctamente(EXIT_SUCCESS);
-		}else if(strcmp("TIE", cmd) == 0){
+		} else if(strcmp("TIE", cmd) == 0) {
 			printf("[+] TIE\n");
 			salir_correctamente(EXIT_SUCCESS);
+		} else if(strcmp("SALIR", buffer) == 0){
+			printf("[+] El jugador contrincante ha abandonado la partida.\n");
+			protocolError(EXIT_SUCCESS);
+		} else if(strcmp("URTURN", cmd) != 0) {
+			salir_correctamente(EXIT_FAILURE);
 		}
 
-		if(strcmp("URTURN\n", buffer) == 0){
+		if (strcmp("URTURN\n", buffer) == 0) {
 			printf("[+] Empiezas jugando: \n");
 			for (int i = 0; i < nFilas; ++i){
 		    	for (int j = 0; j < nColumnas; ++j){
@@ -300,7 +308,7 @@ int main(int argc, char *argv[]){
 			else{
 				salir_correctamente(EXIT_FAILURE);
 			}
-		}else{
+		} else {
 			sscanf(buffer,"%*s %d", &opponent);
 			meterFicha(nFilas, nColumnas, tablero, opponent, playerVS);
 	        for (int i = 0; i < nFilas; ++i){
@@ -324,20 +332,22 @@ int main(int argc, char *argv[]){
 			else{
 				salir_correctamente(EXIT_FAILURE);
 			}
-		}
-	
+		}	
 	}
 }
 
-
 int meterFicha(int nCol, int nFil, char matrix[][nCol], int col, char player){
 	
+	if(col >= nCol)
+		return -1;
+
 	int z = 0; 
 	while(z < nFil){
-		if(matrix[z][col] != 'A')
+		if(matrix[z][col] != '*')
 			break;
 		z++;
 	}
+
 	if(z == 0){
 		return -1;
 	}else{
