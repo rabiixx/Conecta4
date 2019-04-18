@@ -1,0 +1,11 @@
+gcc -Wall -g -o hello hello.c -lncurses
+https://www.programmerbay.com/program-to-draw-a-chess-board-in-c/
+https://drive.google.com/file/d/1Uxfllj4D1HDB3MGHIBinOONV4Cqh-yrN/view
+g++ sample2d.cpp -o sample2d -lGL -lGLU -lglut
+https://www.geeksforgeeks.org/getting-started-with-opengl/
+https://www.geeksforgeeks.org/scan-line-polygon-filling-using-opengl-c/
+https://www.geeksforgeeks.org/opengl-program-simple-ball-game/
+https://www.3dgep.com/introduction-opengl/
+http://www.cplusplus.com/forum/general/120742/
+https://www.geeksforgeeks.org/draw-circle-c-graphics/
+https://www.programmingsimplified.com/c/graphics.h
