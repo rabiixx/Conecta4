@@ -1,6 +1,6 @@
 /* conecta4_bot.h */
 
-int simulador(int R, int C, char tablero[][C]);
+int simulador(int R, int C, char **tablero);
 int mejorJugada(int casosOk[][3], int casosNOok[][3]);
 int prometedorCol(int C, char tablero[][C], int j,int i,char fichaJug);
 int prometedorFila(int C, char tablero[][C], int i, int j,char fichaJug);

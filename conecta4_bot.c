@@ -5,16 +5,16 @@
 #include <time.h>
 
 
-int simulador(int R, int C, char tablero[][C]);
+int simulador(int R, int C, char **tablero);
 int mejorJugada(int casosOk[][3], int casosNOok[][3]);
-int prometedorCol(int C, char tablero[][C], int j,int i,char fichaJug);
-int prometedorFila(int C, char tablero[][C], int i, int j,char fichaJug);
-int prometedorDiagonal(int C, char tablero[][C], int i, int j, char dir, char fichaJug);
-int analizaEstados(int C, int R, char tablero[][C], char fichaBot, char fichaJug, int jugadas[][3],char Usuario);
+int prometedorCol(int C, char **tablero, int j,int i,char fichaJug);
+int prometedorFila(int C, char **tablero, int i, int j,char fichaJug);
+int prometedorDiagonal(int C, char **tablero, int i, int j, char dir, char fichaJug);
+int analizaEstados(int C, int R, char **tablero, char fichaBot, char fichaJug, int jugadas[][3],char Usuario);
 int intro();
 
 
-int simulador(int R, int C, char tablero[][C]){
+int simulador(int R, int C, char **tablero){
 
 	char fichaBot      = 'X';
     char fichaJugador  = 'O';
@@ -28,7 +28,7 @@ int simulador(int R, int C, char tablero[][C]){
 	return mejorJugada(casosOk,casosNOok);
 }
 
-int analizaEstados(int C, int R, char tablero[][C], char fichaBot, char fichaJug, int jugadas[][3],char Usuario){//buscamos las posibles combianciones de ganar
+int analizaEstados(int C, int R, char **tablero, char fichaBot, char fichaJug, int jugadas[][3],char Usuario){//buscamos las posibles combianciones de ganar
 	//Buscar por columnas
 	int posCol;
 	int numColFich = 0; //numeor de ficahs faborable en la jugada
@@ -203,7 +203,7 @@ int analizaEstados(int C, int R, char tablero[][C], char fichaBot, char fichaJug
 	return 1;
 }
 
-int prometedorDiagonal(int C, char tablero[][C], int i, int j, char dir,char fichaJug){
+int prometedorDiagonal(int C, char **tablero, int i, int j, char dir,char fichaJug){
 	if (dir == 'D'){
 		for (int x = 0; x <= 3; x++){
 			if (tablero[i-x][j+x] == fichaJug)
@@ -220,7 +220,7 @@ int prometedorDiagonal(int C, char tablero[][C], int i, int j, char dir,char fic
 	return 0;
 }
 
-int prometedorFila(int C, char tablero[][C], int i,int j,char fichaJug){
+int prometedorFila(int C, char **tablero, int i,int j,char fichaJug){
 	int count = 0;
 	for  (int y = j; y < j+4; y++){
 		if (tablero[i][y] == fichaJug){
@@ -234,7 +234,7 @@ int prometedorFila(int C, char tablero[][C], int i,int j,char fichaJug){
 		return 0;
 }
 
-int prometedorCol(int C, char tablero[][C], int j,int i,char fichaJug){
+int prometedorCol(int C, char **tablero, int j,int i,char fichaJug){
 	int count = 0;
 	for  (int x = i; x < i+4; x++){
 		if (tablero[x][j] == fichaJug){
