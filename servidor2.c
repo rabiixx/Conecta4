@@ -16,11 +16,12 @@
 #include <netinet/in.h>
 #include <stdbool.h>
 
+#include "conecta4_bot.h"
+
 /* Constantes */ 
 #define MAXDATASIZE 2048	/* Tamano del buffer */
 #define MAXNAMESIZE 16		/* Maximo tamano del nombre */
 #define MAXUSERSIZE 12		/* Maximo tamano del nombre de usuario */
-#define MAX_JUGADORESP 2	/* Maximo numero de jugadores por partida */
 #define MAX_PARTIDAS 4		/* Numero maximo de partidas */
 #define TRUE 1
 #define FALSE 2
@@ -39,12 +40,17 @@ typedef struct _jugador{
 /* Informacion sobre la partida */
 typedef struct _partida{
 	jugador Jugador;						/* Array de los jugadores que jugaran la partidas */
-	int **tablero;							/* Tablero de la partida */
+	char **tablero;							/* Tablero de la partida */
 	int START_FLAG;							/* Indica que la partida esta lista para comenzar */
 	int PLAYING_FLAG;						/* Indica que la partida esta en juego */
 	int END_FLAG;							/* Indica que la partidas ha finlizado */
 	int numJugadores;						/* Indica el numero de jugadores conectados a la partida */
 }partida;
+
+typedef struct  _bot{
+	char name[16];
+	char player;
+}bot;
 
 /* Variables globales */
 int numPartidas = 0;				/* Numero de partidas que se estan jugandose */
@@ -175,12 +181,9 @@ int main(int argc, char const *argv[]){
 	int running = 1;								/* Servidor en funcionamiento */
 	FILE *usersDB = NULL;							/* Base de datos: Fichero con nombre de usuario, resultado y nombre de todos los usuarios */
 	int TIE_FLAG = -1;
-    
-    for (int i = 0; i < MAX_PARTIDAS; ++i){
-    	arrPartidas[i].numJugadores = 0;
-    }
-
-
+	bot Bot;
+	strcpy(Bot.name, "BOT-FLEXX");
+	Bot.player = 'X';
     /* Select */
 	fd_set readfds;						/* Descriptores de interes para select() */
 	fd_set except_fds;								/* Control de excepciones */
@@ -234,20 +237,17 @@ H:		for (int i = 0; i < numPartidas; ++i){
 				if(x){
 					fprintf(arrPartidas[i].Jugador.f, "URTURN\n");
 					printf("[+] %s empiezas jugando.\n", arrPartidas[i].Jugadores[0].nombre);					
-					arrPartidas[i].Jugadores[0].player = 1;
-					arrPartidas[i].Jugadores[1].player = -1;
 				}else{
-					fprintf(arrPartidas[i].Jugadores[1].f, "URTURN\n");
-					printf("[+] Empiezas jugando %s.\n", bot_name);
-					arrPartidas[i].Jugadores[0].player = -1;
-					arrPartidas[i].Jugadores[1].player = 1;
+					printf("[+] Empiezas jugando %s.\n", );
 				}
-				printf("[+] Simbolo de %s = %d\n", arrPartidas[i].Jugadores[0].nombre, arrPartidas[i].Jugadores[0].player);
-				printf("[+] Simbolo de %s = %d\n", arrPartidas[i].Jugadores[1].nombre, arrPartidas[i].Jugadores[1].player);
+
+				arrPartidas[i].Jugador.player = 'O';
+				printf("[+] Simbolo de %s = %d\n", arrPartidas[i].Jugador.nombre, arrPartidas[i].Jugador.player);
+				printf("[+] Simbolo de %s = %d\n", Bot.name, Bot.player);
 
 				for (int z = 0; z < nFilas; ++z)
 					for (int j = 0; j < nColumnas; ++j)
-						arrPartidas[i].tablero[z][j] = 0;
+						arrPartidas[i].tablero[z][j] = '-';
 
 				arrPartidas[i].START_FLAG = FALSE;	
 				arrPartidas[i].PLAYING_FLAG = TRUE;
@@ -258,7 +258,7 @@ H:		for (int i = 0; i < numPartidas; ++i){
 
 		printf("[+] Numero de partidas en juego: %d\n", numPartidas);
 		for (int i = 0; i < numPartidas; ++i) {
-			printf("\t- Partida %d: %s VS %s\n", i, bot_name, arrPartidas[i].Jugadores[1].nombre);
+			printf("\t- Partida %d: %s VS %s\n", i, Bot.name, arrPartidas[i].Jugador.nombre);
 		}
 	
 		FD_ZERO (&readfds);
@@ -303,29 +303,30 @@ H:		for (int i = 0; i < numPartidas; ++i){
 							sscanf(buffer, "%s", cmd);
 							if (strcmp("COLUMN", cmd) == 0) {
 								sscanf(buffer, "%*s %d", &tempColumna);
-								if (meterFicha(nColumnas, nColumnas,  arrPartidas[i].tablero, tempColumna, arrPartidas[i].Jugadores[j].player) == -1){
-									fprintf(arrPartidas[i].Jugadores[j].f, "COLUMN ERROR\n");
+								if (meterFicha(nColumnas, nColumnas,  arrPartidas[i].tablero, tempColumna, arrPartidas[i].Jugador.player) == -1){
+									fprintf(arrPartidas[i].Jugador.f, "COLUMN ERROR\n");
 								} else {
 
-									printf("\t- Partida %d: %s VS %s\n", i, arrPartidas[i].Jugadores[0].nombre, arrPartidas[i].Jugadores[1].nombre);
+									fprintf(arrPartidas[i].Jugadores[j].f, "COLUMN OK\n");	
+
+									/* Comprobacion empate */
 									for (int z = 0; z < nFilas; ++z)
 							            for (int j = 0; j < nColumnas; ++j){
-							                if (arrPartidas[i].tablero[z][j] == 0){
+							                if (arrPartidas[i].tablero[z][j] == '-'){
 							                    TIE_FLAG = FALSE;
 							                    break;
 							                }
 							            }
 
-							        printf("[+] Partida %d: %s VS %s\n", i, arrPartidas[i].Jugadores[0].nombre, arrPartidas[i].Jugadores[1].nombre);
+							        printf("[+] Partida %d: %s VS %s\n", i, Bot.name arrPartidas[i].Jugador.nombre);
 							        for (int z = 0; z < nFilas; ++z){
 								    	for (int j = 0; j < nColumnas; ++j){
-								    		printf("| %d |\t", arrPartidas[i].tablero[z][j]);
+								    		printf("| %c |\t", arrPartidas[i].tablero[z][j]);
 								    	}
 								    	printf("\n");
 								    }
 								    printf("\n\n");
 
-									fprintf(arrPartidas[i].Jugadores[j].f, "COLUMN OK\n");	
 									if (connect4(nFilas, nColumnas, arrPartidas[i].tablero, arrPartidas[i].Jugadores[j].player) == TRUE){
 										if (j == 0) {
 											fprintf(arrPartidas[i].Jugadores[j].f, "VICTORY\n");
@@ -355,11 +356,8 @@ H:		for (int i = 0; i < numPartidas; ++i){
 								}
 							} else if(strcmp("SALIR", cmd) == 0) {
 				       			printf("[+] Partida %d interrumpida.\n", i);
-						       	printf("[+] Jugador %s ha cerrado la conexión\n", arrPartidas[i].Jugadores[j].nombre);
-						       	if(j == 1)
-						       		fprintf(arrPartidas[i].Jugadores[j - 1].f, "SALIR\n");
-								else if(j == 0)
-									fprintf(arrPartidas[i].Jugadores[j + 1].f, "SALIR\n");
+						       	printf("[+] Jugador %s ha cerrado la conexión\n", arrPartidas[i].Jugador.nombre);
+						       	fprintf(arrPartidas[i].Jugador.f, "SALIR\n");
 								clearPartida(i);
 							} else {
 								salir_correctamente(EXIT_SUCCESS);
@@ -554,21 +552,20 @@ void compactaClavesP(void){
 	numPartidas = j;
 }
 
-/*https://gist.github.com/Alexey-N-Chernyshov/4634731*/
-
 /* Mete una la ficha player en la columna col en el tablero, si es posible */
-int meterFicha(int nCol, int nFil, int **matrix, int col, int player){
+int meterFicha(int nCol, int nFil, char **matrix, int col, char player){
 	
 	if(col >= nCol)
 		return -1;
 
 	int z = 0; 
 	while(z < nFil){
-		if(matrix[z][col] != 0)
+		if(matrix[z][col] != '-')
 			break;
 		z++;
 	}
 	if(z == 0){
+		printf("[+] Columna incorrecta, vuelva a elegir.\n");
 		return -1;
 	}else{
 		matrix[z - 1][col] = player;
@@ -578,37 +575,35 @@ int meterFicha(int nCol, int nFil, int **matrix, int col, int player){
 
 
 /* Comprueba si la partida a finlizado */
-int connect4(int maxRow, int maxCol, int **tablero, int player)
+int connect4(int maxRow, int maxCol, char **tablero, char player)
 {
 
     // Verificacion horizontal
-    for (int j = 0; j<maxRow-3 ; j++ ){
-        for (int i = 0; i<maxCol; i++){
-            if (tablero[i][j] == player && tablero[i][j+1] == player && tablero[i][j+2] == player && tablero[i][j+3] == player){
-                return TRUE;
-            }           
+    for (int j = 0; j < maxRow - 3 ; j++) {
+        for (int i = 0; i < maxCol; i++) {
+            if (tablero[i][j] == player && tablero[i][j+1] == player && tablero[i][j+2] == player && tablero[i][j+3] == player)
+                return TRUE;       
         }
     }
     //Verificacion vertical
-    for (int i = 0; i<maxCol-3 ; i++ ){
-        for (int j = 0; j<maxRow; j++){
-            if (tablero[i][j] == player && tablero[i+1][j] == player && tablero[i+2][j] == player && tablero[i+3][j] == player){
-                return TRUE;
-            }           
+    for (int i = 0; i < maxCol - 3 ; i++ ) {
+        for (int j = 0; j < maxRow; j++) {
+            if (tablero[i][j] == player && tablero[i+1][j] == player && tablero[i+2][j] == player && tablero[i+3][j] == player)
+                return TRUE;          
         }
     }
  
     // Verificacion diagonal ascendiente 
-    for (int i=3; i<maxCol; i++){
-        for (int j=0; j<maxRow-3; j++){
+    for (int i = 3; i < maxCol; i++){
+        for (int j = 0; j < maxRow - 3; j++) {
             if (tablero[i][j] == player && tablero[i-1][j+1] == player && tablero[i-2][j+2] == player && tablero[i-3][j+3] == player)
                 return TRUE;
         }
     }
 
     // Verificacion diagonal descendiente
-    for (int i=3; i<maxCol; i++){
-        for (int j=3; j<maxRow; j++){
+    for (int i = 3; i < maxCol; i++) {
+        for (int j = 3; j < maxRow; j++) {
             if (tablero[i][j] == player && tablero[i-1][j-1] == player && tablero[i-2][j-2] == player && tablero[i-3][j-3] == player)
                 return TRUE;
         }
