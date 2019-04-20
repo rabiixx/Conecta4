@@ -30,8 +30,8 @@
 typedef struct _jugador{
 	int fd;						/* Descriptor del socket cliente */
 	FILE *f;					/* FILE del cliente para la comunicacion a mas alto nivel */
-	char *nombre[MAXNAMESIZE + 1];				/* Nobre del cliente */
-	char *user_id[MAXUSERSIZE + 1];				/* id del usuario */
+	char nombre[MAXNAMESIZE + 1];				/* Nobre del cliente */
+	char user_id[MAXUSERSIZE + 1];				/* id del usuario */
 	int res;					/* Resultado de la operacion, enviada por el cliente */
 	int player;					/* Ficha del jugador */
 }jugador;
@@ -43,6 +43,7 @@ typedef struct _partida{
 	int START_FLAG;							/* Indica que la partida esta lista para comenzar */
 	int PLAYING_FLAG;						/* Indica que la partida esta en juego */
 	int END_FLAG;							/* Indica que la partidas ha finlizado */
+	int TIE_FLAG;
 	int numJugadores;						/* Indica el numero de jugadores conectados a la partida */
 }partida;
 
@@ -51,6 +52,8 @@ int numClientes = 0;				/* Numero de clientes conectados */
 int numPartidas = 0;				/* Numero de partidas que se estan jugandose */
 int server_socketfd;				/* Descriptor de fichero de socket servidor */
 partida arrPartidas[MAX_PARTIDAS];	/* Array con los datos de cada partida */
+FILE *usersDB = NULL;							/* Base de datos: Fichero con nombre de usuario, resultado y nombre de todos los usuarios */
+
 
 /* Definicion de funciones */
 void salir_correctamente(int code);
@@ -64,6 +67,15 @@ int max(int, int);
 void clearPartida(int);
 
 void compactaClavesP(void);
+
+void nuevoJugador(int nFil, int nCol);
+void login(jugador j, char buffer[MAXDATASIZE]);
+void registrar(jugador c);
+void salir(int i, int j);
+void finPartida(int p_index, int j_index);
+void comienzaPartida(int i, int nFil, int nCol);
+void mostrarTablero(int nFil, int nCol, int **tablero);
+void turno(int p_index, int j_index, int tempColumna);
 
 
 /* Declaracion de funciones */
@@ -167,15 +179,10 @@ int main(int argc, char const *argv[]){
 	int nColumnas = atoi(argv[3]);
 
 	/* Variables Sockets */
-    int 				client_socketfd;			/* Descriptor de fichero de socket cliente */ 		
     struct sockaddr_in  server_dir;					/* Informacion sobre servidor */
-    struct sockaddr_in  client_dir;					/* Informacion sobre direccion del cliente */
-    socklen_t 			addrlen;					/* Tamaño de la informacion del cliente */
     char 				buffer[MAXDATASIZE];		/* Buffer General de 1024*sizeof(char) */
 	int 				Puerto = atoi(argv[1]);		/* Puerto de escucha */    
 	int running = 1;								/* Servidor en funcionamiento */
-	FILE *usersDB = NULL;							/* Base de datos: Fichero con nombre de usuario, resultado y nombre de todos los usuarios */
-	int TIE_FLAG = -1;
     
     for (int i = 0; i < MAX_PARTIDAS; ++i){
     	arrPartidas[i].numJugadores = 0;
@@ -224,7 +231,7 @@ int main(int argc, char const *argv[]){
 H:		for (int i = 0; i < numPartidas; ++i){
 
 			if (arrPartidas[i].START_FLAG == TRUE)
-				comienzaPartida(i);
+				comienzaPartida(i, nFilas, nColumnas);
 		}
 
 		compactaClavesP();
@@ -285,12 +292,12 @@ H:		for (int i = 0; i < numPartidas; ++i){
 									fprintf(arrPartidas[i].Jugadores[j].f, "COLUMN OK\n");	
 
 									printf("[+] Partida %d: %s VS %s\n", i, arrPartidas[i].Jugadores[0].nombre, arrPartidas[i].Jugadores[1].nombre);
-									mostrarTablero(nFilas, int nColumnas, arrPartidas[i].tablero);
+									mostrarTablero(nFilas, nColumnas, arrPartidas[i].tablero);
 
-								   	if (connect4(nFilas, nColumnas, arrPartidas[i].tablero, arrPartidas[i].Jugadores[j].player, int i) == TRUE) {
+								   	if (connect4(nFilas, nColumnas, arrPartidas[i].tablero, arrPartidas[i].Jugadores[j].player, i) == TRUE) {
 								   		finPartida(i, j);
 								    } else {
-								    	turno(i, j);
+								    	turno(i, j, tempColumna);
 								   	}
 								}
 							} else if(strcmp("SALIR", cmd) == 0) {
@@ -311,7 +318,7 @@ H:		for (int i = 0; i < numPartidas; ++i){
 				/* Se comprueba si algún cliente nuevo desea conectarse y se le
 				 * admite */
 				if (FD_ISSET (server_socketfd, &readfds) ){
-					nuevoJugador();
+					nuevoJugador(nFilas, nColumnas);
 				}
 			}
 		}
@@ -402,7 +409,7 @@ int connect4(int nFil, int nCol, int **tablero, int player, int p)
 
     /* Verificacion empate */
 	for (int i = 0; i < nFil; ++i)
-        for (int j = 0; j < nColumnas; ++j){
+        for (int j = 0; j < nCol; ++j){
             if (tablero[i][j] == 0)
                 break;
             else if( (i == (nFil - 1)) && (j == (nCol - 1)) ) 
@@ -430,8 +437,13 @@ void clearPartida(int i){
 
 
 /* Acepta la conexión con el cliente, guardándola en el array */
-void nuevoJugador(void){
-	
+void nuevoJugador(int nFilas, int nColumnas){
+
+	char buffer[MAXDATASIZE];
+	socklen_t 			addrlen;					/* Tamaño de la informacion del cliente */
+	int 				client_socketfd;			/* Descriptor de fichero de socket cliente */ 		
+	struct sockaddr_in  client_dir;					/* Informacion sobre direccion del cliente */
+
 	addrlen = sizeof(client_dir);
 	if ((client_socketfd = accept(server_socketfd, (struct sockaddr *)&client_dir, &addrlen)) != -1){
 		printf("[+] Conexion establecida desde %s:%d\n", inet_ntoa(client_dir.sin_addr), ntohs(client_dir.sin_port));
@@ -454,7 +466,6 @@ void nuevoJugador(void){
 		fprintf(c.f, "FULL\n");
 		printf("[+] Nueva conexión denegada, número máximo de partidas alcanzado\n");
 		protocolError(c.f, c.fd);
-		goto H;
 	} else if (arrPartidas[numPartidas].numJugadores == 0){			
 
 		/* Nueva partida */ 
@@ -462,6 +473,7 @@ void nuevoJugador(void){
 		p.START_FLAG = FALSE;
 		p.PLAYING_FLAG = FALSE;
 		p.END_FLAG = FALSE;
+		p.TIE_FLAG = FALSE;
 		p.tablero = (int**)malloc(nFilas * sizeof(int*));
 		for (int j = 0; j < nColumnas; ++j){
 			p.tablero[j] = (int*)malloc(nColumnas * sizeof(int));
@@ -485,16 +497,16 @@ void nuevoJugador(void){
 
 	sscanf(buffer, "%s", cmd);
 	if( strcmp("REGISTRAR", cmd) == 0){
-		register(c);
+		registrar(c);
 	}else if( strcmp("LOGIN", cmd) == 0){	
-		login(c);
+		login(c, buffer);
 	}else{
 		protocolError(c.f, c.fd);
 	}	
 }
 
 
-void login(jugador j){
+void login(jugador c, char buffer[MAXDATASIZE]){
 
 	char tempUser_id[MAXUSERSIZE];
 	char tempName[MAXNAMESIZE];
@@ -502,48 +514,49 @@ void login(jugador j){
 
 	if((usersDB = fopen("users.db", "r")) == NULL){
 		perror("fopen failed");
-		protocolError(j.f, j.fd);
+		protocolError(c.f, c.fd);
 	}			
 
-	sscanf(buffer, "%*s %s %d", j.user_id, &j.res);
+	sscanf(buffer, "%*s %s %d", c.user_id, &c.res);
 	bzero(buffer, MAXDATASIZE);
 
 	/* Busqueda del usuario en la base de datos */
 	while( fgets(buffer, MAXDATASIZE, usersDB) != NULL ){
 		sscanf(buffer, "%s %d %s", tempUser_id, &tempRes, tempName);
-		if( (strcmp(j.user_id, tempUser_id) == 0) && (j.res == tempRes) )
+		if( (strcmp(c.user_id, tempUser_id) == 0) && (c.res == tempRes) )
 			break;						
 	}
 
 	/* Hemos encontrado el usuario */
-	if ( (strcmp(j.user_id, tempUser_id) == 0) && (j.res == tempRes) ){
-		strcpy((j.nombre), tempName);
-		printf("[+] Usuario %s autentificado\n", j.user_id);
-		fprintf(j.f, "LOGIN OK\n");
+	if ( (strcmp(c.user_id, tempUser_id) == 0) && (c.res == tempRes) ){
+		strcpy((c.nombre), tempName);
+		printf("[+] Usuario %s autentificado\n", c.user_id);
+		fprintf(c.f, "LOGIN OK\n");
 		fclose(usersDB);	
 	} else {
-		fprintf(j.f, "LOGIN ERROR\n");
+		fprintf(c.f, "LOGIN ERROR\n");
 		fclose(usersDB);
-		protocolError(j.f, j.fd);
+		protocolError(c.f, c.fd);
 	}
 	printf("[+] Numero de partidas en juego: %d\n", numPartidas);
 	
 	if(arrPartidas[numPartidas].numJugadores == 1){
-		j.player = 1;
-		arrPartidas[numPartidas].Jugadores[0] = j;
+		c.player = 1;
+		arrPartidas[numPartidas].Jugadores[0] = c;
 		printf("[+] Matchmaking. Wait a momemnt man...\n");
 	}else if(arrPartidas[numPartidas].numJugadores == 2){
-		j.player = -1;
-		arrPartidas[numPartidas].Jugadores[1] = j;
+		c.player = -1;
+		arrPartidas[numPartidas].Jugadores[1] = c;
 		arrPartidas[numPartidas].START_FLAG = TRUE;
 		printf("[+] La partida %d esta apunto de comenzar.\n", numPartidas);
 		numPartidas++;
 	}
 }
 
-void register(jugador c){
+void registrar(jugador c){
 
-	bzero(cmd, MAXDATASIZE);
+	char buffer[MAXDATASIZE];
+	char cmd[MAXDATASIZE];
 	int a = random_number(0, 10);		/* Numeros de la operacion */	
 	int b = random_number(3, 15);
 	
@@ -620,7 +633,7 @@ void salir(int i, int j){
 
 void finPartida(int p_index, int j_index){
 
-	if (TIE_FLAG == TRUE) {
+	if (arrPartidas[p_index].TIE_FLAG == TRUE) {
 		fprintf(arrPartidas[p_index].Jugadores[0].f, "TIE\n");
 		fprintf(arrPartidas[p_index].Jugadores[1].f, "TIE\n");
 		printf("[+] La partida %d ha finalizado\n", p_index);
@@ -628,19 +641,19 @@ void finPartida(int p_index, int j_index){
 	}else{
 		if (j_index == 0) {
 			fprintf(arrPartidas[p_index].Jugadores[j_index].f, "VICTORY\n");
-			fprintf(arrPartidas[i].Jugadores[j_index + 1].f, "DEFEAT\n");
+			fprintf(arrPartidas[p_index].Jugadores[j_index + 1].f, "DEFEAT\n");
 			printf("[+] La partida %d ha finalizado\n", p_index);
 			clearPartida(p_index);
-		} else if(j == 1) {
+		} else if(j_index == 1) {
 			fprintf(arrPartidas[p_index].Jugadores[j_index].f, "VICTORY\n");
-			fprintf(arrPartidas[i].Jugadores[j_index - 1].f, "DEFEAT\n");
+			fprintf(arrPartidas[p_index].Jugadores[j_index - 1].f, "DEFEAT\n");
 			printf("[+] La partida %d ha finalizado\n", p_index);
 			clearPartida(p_index);
+		}
 	}
 }
 
-
-void comienzaPartida(int i){
+void comienzaPartida(int i, int nFilas, int nColumnas){
 
 	fprintf(arrPartidas[i].Jugadores[0].f, "START %s %d %d\n", arrPartidas[i].Jugadores[1].nombre, nFilas, nColumnas);
 	fprintf(arrPartidas[i].Jugadores[1].f, "START %s %d %d\n", arrPartidas[i].Jugadores[0].nombre, nFilas, nColumnas);
@@ -683,7 +696,7 @@ void mostrarTablero(int nFil, int nCol, int **tablero){
     printf("\n\n");
 }
 
-void turno(int p_index, int j_index){
+void turno(int p_index, int j_index, int tempColumna){
 	
 	if (j_index == 0) {
 		fprintf(arrPartidas[p_index].Jugadores[j_index + 1].f, "URTURN %d\n", tempColumna);
@@ -692,6 +705,7 @@ void turno(int p_index, int j_index){
 		fprintf(arrPartidas[p_index].Jugadores[j_index - 1].f, "URTURN %d\n", tempColumna);
 		printf("[+] Es el turno de %s.\n", arrPartidas[p_index].Jugadores[j_index - 1].nombre);
 	}
+
 }
 			
 
