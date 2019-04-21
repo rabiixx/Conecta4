@@ -50,6 +50,8 @@ int finPartida(char cmd[MAXDATASIZE]);
 
 void mostrarTablero(int nFil, int nCol, char tablero[][nCol]);
 
+void turno(int nFilas, int nColumnas, char tablero[][nColumnas], char player);
+
 /* Definicion de funciones */
 
 /* Captura la señal de CTRL+C */
@@ -139,7 +141,6 @@ int main(int argc, char *argv[]){
 	/*************/
 	/* PROTOCOLO */
 	/*************/
-
 	if( fgets(buffer, MAXDATASIZE, server_f) == NULL){
 		perror("fgets failed");
 		protocolError(EXIT_FAILURE);
@@ -200,47 +201,18 @@ int main(int argc, char *argv[]){
 
 		if (strcmp("URTURN\n", buffer) == 0) {
 			printf("[+] Empiezas jugando: \n");
-			mostrarTablero(nFilas, nColumnas, tablero);
-
-	B:		printf("[+] Introduce la columna donde desee meter la ficha: ");
-			scanf("%d", &col);
-			fprintf(server_f, "COLUMN %d\n", col);
-
-			if (fgets(buffer, MAXDATASIZE, server_f) ==  NULL){
-				perror("fgets failed");
-				salir_correctamente(EXIT_FAILURE);
-			}
-
-			if (strcmp("COLUMN OK\n", buffer) == 0)
-				meterFicha(nFilas, nColumnas, tablero, col, player);
-			else if (strcmp("COLUMN ERROR\n", buffer) == 0)
-				goto B;
-			else
-				salir_correctamente(EXIT_FAILURE);
-
+	       	turno(nFilas, nColumnas, tablero, player);
 		} else {
-			sscanf(buffer,"%*s %d", &opponent);
+			sscanf(buffer, "%*s %d", &opponent);
 			meterFicha(nFilas, nColumnas, tablero, opponent, playerVS);
-	       	mostrarTablero(nFilas, nColumnas, tablero);
-
-	C:		printf("[+] Introduce la columna donde desee meter la ficha: ");
-			scanf("%d", &col);
-			fprintf(server_f, "COLUMN %d\n", col);
-
-			if (fgets(buffer, MAXDATASIZE, server_f) ==  NULL){
-				perror("fgets failed");
-				salir_correctamente(EXIT_FAILURE);
-			}
-
-			if (strcmp("COLUMN OK\n", buffer) == 0)
-				meterFicha(nFilas, nColumnas, tablero, col, player);
-			else if (strcmp("COLUMN ERROR\n", buffer) == 0)
-				goto C;
-			else
-				salir_correctamente(EXIT_FAILURE);
+	       	turno(nFilas, nColumnas, tablero, player);
 		}
 	}
 }
+
+/****************************/
+/* Definicion de funciones  */
+/****************************/
 
 /* Se mete la ficha player en la columna col del tablero */
 void meterFicha(int nCol, int nFil, char tablero[][nCol], int col, char player)
@@ -395,4 +367,27 @@ void mostrarTablero(int nFil, int nCol, char tablero[][nCol])
     	}
     	printf("\n");
     }
+}
+
+void turno(int nFilas, int nColumnas, char tablero[][nColumnas], char player)
+{
+	char buffer[MAXDATASIZE];
+	int col;
+
+	mostrarTablero(nFilas, nColumnas, tablero);
+	printf("[+] Introduce la columna donde desee meter la ficha: ");
+	scanf("%d", &col);
+	fprintf(server_f, "COLUMN %d\n", col);
+
+	if (fgets(buffer, MAXDATASIZE, server_f) ==  NULL){
+		perror("fgets failed");
+		salir_correctamente(EXIT_FAILURE);
+	}
+
+	if (strcmp("COLUMN OK\n", buffer) == 0)
+		meterFicha(nFilas, nColumnas, tablero, col, player);
+	else if (strcmp("COLUMN ERROR\n", buffer) == 0)
+		turno(nFilas, nColumnas, tablero, player);
+	else
+		salir_correctamente(EXIT_FAILURE);
 }
