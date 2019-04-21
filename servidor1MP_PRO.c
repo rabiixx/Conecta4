@@ -228,8 +228,7 @@ int main(int argc, char const *argv[]){
 
 		/* Comprobamos si hay alguna partida para comenzar 
 		* o si bien hay alguna partida que haya finalizado */
-H:		for (int i = 0; i < numPartidas; ++i){
-
+H:		for (int i = 0; i < numPartidas; ++i) {
 			if (arrPartidas[i].START_FLAG == TRUE)
 				comienzaPartida(i, nFilas, nColumnas);
 		}
@@ -277,7 +276,7 @@ H:		for (int i = 0; i < numPartidas; ++i){
 							
 							char cmd[MAXDATASIZE];
 							int tempColumna;
-							if (fgets(buffer, MAXDATASIZE, arrPartidas[i].Jugadores[j].f) == NULL){
+A:							if (fgets(buffer, MAXDATASIZE, arrPartidas[i].Jugadores[j].f) == NULL){
 								perror("fgets failed");
 								salir_correctamente(EXIT_FAILURE);
 							}
@@ -287,6 +286,7 @@ H:		for (int i = 0; i < numPartidas; ++i){
 								sscanf(buffer, "%*s %d", &tempColumna);
 								if (meterFicha(nColumnas, nColumnas,  arrPartidas[i].tablero, tempColumna, arrPartidas[i].Jugadores[j].player) == -1) {
 									fprintf(arrPartidas[i].Jugadores[j].f, "COLUMN ERROR\n");
+									goto A;
 								} else {
 
 									fprintf(arrPartidas[i].Jugadores[j].f, "COLUMN OK\n");	
@@ -305,7 +305,6 @@ H:		for (int i = 0; i < numPartidas; ++i){
 							} else {
 								salir_correctamente(EXIT_SUCCESS);
 							}
-
 						}
 
 						if (FD_ISSET(arrPartidas[i].Jugadores[j].fd, &except_fds)) {
@@ -347,9 +346,8 @@ void compactaClavesP(void){
 	numPartidas = j;
 }
 
-/*https://gist.github.com/Alexey-N-Chernyshov/4634731*/
-
-/* Mete una la ficha player en la columna col en el tablero, si es posible */
+/* Introduce la ficha player en la columna col del tablero. 
+ * Si la ficha no se puede meter devuelve FALSE, si no TRUE */
 int meterFicha(int nCol, int nFil, int **matrix, int col, int player){
 	
 	if(col >= nCol)
@@ -411,12 +409,12 @@ int connect4(int nFil, int nCol, int **tablero, int player, int p)
 	for (int i = 0; i < nFil; ++i)
         for (int j = 0; j < nCol; ++j){
             if (tablero[i][j] == 0)
-                break;
+                goto E;
             else if( (i == (nFil - 1)) && (j == (nCol - 1)) ) 
         		arrPartidas[p].TIE_FLAG = TRUE;
         }
 
-    return (arrPartidas[p].TIE_FLAG == TRUE) ? TRUE : FALSE; 
+E:    return (arrPartidas[p].TIE_FLAG == TRUE) ? TRUE : FALSE; 
 
 }
 
@@ -462,7 +460,7 @@ void nuevoJugador(int nFilas, int nColumnas){
 	}
 	setbuf(c.f, NULL);
 	
-	if (numPartidas > MAX_PARTIDAS) {
+	if ( (numPartidas + 1) > MAX_PARTIDAS) {
 		fprintf(c.f, "FULL\n");
 		printf("[+] Nueva conexión denegada, número máximo de partidas alcanzado\n");
 		protocolError(c.f, c.fd);
@@ -496,13 +494,13 @@ void nuevoJugador(int nFilas, int nColumnas){
 	}
 
 	sscanf(buffer, "%s", cmd);
-	if( strcmp("REGISTRAR", cmd) == 0){
+	if( strcmp("REGISTRAR", cmd) == 0)
 		registrar(c);
-	}else if( strcmp("LOGIN", cmd) == 0){	
+	else if( strcmp("LOGIN", cmd) == 0)	
 		login(c, buffer);
-	}else{
+	else
 		protocolError(c.f, c.fd);
-	}	
+		
 }
 
 
