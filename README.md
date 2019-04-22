@@ -10,7 +10,7 @@ Ninguno
 
 Compilar todo
 ```
-make obejtivo1 
+make all 
 ```
 o 
 ```
@@ -71,4 +71,4 @@ make objetivo2
 
 ## Autores
 
-* **Ruben Cherif Narvaez** - 99rubenche@gmail.com - [PurpleBooth](https://github.com/rabiixx)
+* **Ruben Cherif Narvaez** - 99rubenche@gmail.com - [rabiixx](https://github.com/rabiixx)
