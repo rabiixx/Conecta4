@@ -16,15 +16,17 @@
 #include <netinet/in.h>
 #include <stdbool.h>
 
-#include "conecta4_bot.h"
+/* Libreria que incluye el bot */
+#include "conecta4_bot.h"	
 
 /* Constantes */ 
 #define MAXDATASIZE 2048	/* Tamano del buffer */
 #define MAXNAMESIZE 16		/* Maximo tamano del nombre */
 #define MAXUSERSIZE 12		/* Maximo tamano del nombre de usuario */
-#define MAX_PARTIDAS 1		/* Numero maximo de partidas */
+#define MAX_PARTIDAS 2		/* Numero maximo de partidas */
+#define BACKLOG 6
 #define TRUE 1
-#define FALSE 2
+#define FALSE 0
 
 
 /* Informacion sobre jugador */
@@ -61,39 +63,40 @@ partida arrPartidas[MAX_PARTIDAS];	/* Array con los datos de cada partida */
 bot Bot;
 FILE *usersDB = NULL;							/* Base de datos: Fichero con nombre de usuario, resultado y nombre de todos los usuarios */
 
-
+/***************************/
 /* Definicion de funciones */
-
-void mostrarTablero(int nFil, int nCol, char **tablero);
-
-void finPartida(int p_index);
-
-void salir_correctamente(int code);
-
-int connect4(int maxRow, int maxCol, char **tablero, char player, int p_index);
-
-int meterFicha(int nCol, int nFil, char **matrix, int col, char player);
-
-int max(int, int);
-
-void clearPartida(int);
-
-void compactaClavesP(void);
-
-void salir(int i);
+/***************************/
 
 void nuevoJugador(int nFilas, int nColumnas);
 
-void registrar(jugador c);
-
 void login(jugador c, char buffer[MAXDATASIZE]);
+
+void registrar(jugador c);
 
 void comienzaPartida(int i, int nFilas, int nColumnas);
 
 void atiendeJugador(int p_index, int nFilas, int nColumnas);
 
+int meterFicha(int nCol, int nFil, char **matrix, int col, char player);
 
+void mostrarTablero(int nFil, int nCol, char **tablero);
+
+int connect4(int maxRow, int maxCol, char **tablero, char player, int p_index);
+
+void finPartida(int p_index);
+
+void salir(int i);
+
+void clearPartida(int);
+
+void compactaClavesP(void);
+
+void salir_correctamente(int code);
+
+
+/****************************/
 /* Declaracion de funciones */
+/****************************/
 
 /* Genera un string de entre 6 y 12 caracteres de forma aleatoria */ 
 char *randString(){
@@ -170,48 +173,55 @@ void salir_correctamente(int code){
 	exit(code);
 }
 
-void protocolError(FILE *f, int fd){
-
+void protocolError(FILE *f, int fd)
+{
 	fclose(f);
 	close(fd);
 }
 
+/* Calcula el maximo de dos numero dados */
+int max(int a, int b)
+{
+	return (a > b) ? a : b;
+}
 
+/* Main function */
 int main(int argc, char const *argv[]){
 	
 	system("clear");
 	
-	if (argc != 4){
+	if (argc != 4) {
         perror("Usage: ./servidor <puerto> <numero_filas> <numero_columnas>");
         exit(EXIT_FAILURE);
     }
 
-    if (setup_signals() != 0){
+    if (setup_signals() != 0)
     	exit(EXIT_FAILURE);
-    }
-
+    
 	/* Variables */ 
 	int nFilas = atoi(argv[2]);
 	int nColumnas = atoi(argv[3]);
+	if ( (nFilas < 6) || (nColumnas < 7) ) {
+		perror("[+] El numero de filas debe ser mayor o igual a 6");
+		perror("[+] El numero de columnas debe ser mayor o igual a 7");
+        exit(EXIT_FAILURE);
+	}
 
 	/* Variables Sockets */
-    //int 				client_socketfd;			/* Descriptor de fichero de socket cliente */ 		
-    struct sockaddr_in  server_dir;					/* Informacion sobre servidor */
-    //struct sockaddr_in  client_dir;					/* Informacion sobre direccion del cliente */
-    //socklen_t 			addrlen;					/* Tamaño de la informacion del cliente */
-    //char 				buffer[MAXDATASIZE];		/* Buffer General de 1024*sizeof(char) */
-	int 				Puerto = atoi(argv[1]);		/* Puerto de escucha */    
-	int running = 1;								/* Servidor en funcionamiento */
-	//int tempColumna;
+    struct sockaddr_in  server_dir;		/* Informacion sobre servidor */
+	int Puerto = atoi(argv[1]);			/* Puerto de escucha */    
+	int running = 1;					/* Servidor en funcionamiento */
+
 	strcpy(Bot.name, "BOT-FLEXX");
 	Bot.player = 'X';
     
     /* Select */
 	fd_set readfds;						/* Descriptores de interes para select() */
-	fd_set except_fds;								/* Control de excepciones */
-	int maximo;										/* Número de descriptor más grande */						
+	fd_set except_fds;					/* Control de excepciones */
+	int maximo;							/* Número de descriptor más grande */						
+	
 	/* Create socket */
-    if( (server_socketfd = socket(AF_INET, SOCK_STREAM, 0)) == -1){
+    if ( (server_socketfd = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
         perror("Failed to create socket");
         exit(EXIT_FAILURE);
     }
@@ -228,9 +238,9 @@ int main(int argc, char const *argv[]){
         exit(EXIT_FAILURE);
     }
 	/* Listen */
-	if ( listen(server_socketfd, 10) != -1){
+	if ( listen(server_socketfd, BACKLOG) != -1){
 		printf("[+] Escuchando conexiones en el puerto %d\n", Puerto);
-	}else{
+	} else {
 		printf("[+] Nueva conexión denegada, número máximo de clientes alcanzado\n");
         perror("Listen failed");
         exit(EXIT_FAILURE);
@@ -239,14 +249,12 @@ int main(int argc, char const *argv[]){
     /* Servidor activo */
 	while (running){
 
-		/* Comprobamos si hay alguna partida para comenzar 
-		* o si bien hay alguna partida que haya finalizado */
-		for (int i = 0; i < numPartidas; ++i){
-			if (arrPartidas[i].START_FLAG == TRUE){
+		/* Comprobamos si hay alguna partida lista para comenzar */
+		for (int i = 0; i < numPartidas; ++i)
+			if (arrPartidas[i].START_FLAG == TRUE)
 				comienzaPartida(i, nFilas, nColumnas);
-			}
-		}
 
+		/* Se añaden partidas listas para empezar y se eliminan las finalizadas */
 		compactaClavesP();
 
 		printf("[+] Numero de partidas en juego: %d\n", numPartidas);
@@ -278,27 +286,29 @@ int main(int argc, char const *argv[]){
 
 				for (int i = 0; i < numPartidas; i++) {
 					
+					/*  Se atienden las partidas */
 					if (FD_ISSET(arrPartidas[i].Jugador.fd, &readfds) )
 						atiendeJugador(i, nFilas, nColumnas);
+					
+					/* Control de excepciones */
 					if (FD_ISSET(arrPartidas[i].Jugador.fd, &except_fds)) {
 			        	printf("except_fds for server.\n");
 			        	salir_correctamente(EXIT_FAILURE);
 			        }
 				}
 
-				/* Se comprueba si algún cliente nuevo desea conectarse y se le
-				 * admite */
-				if (FD_ISSET (server_socketfd, &readfds) ){
+				/* Se comprueba si algún cliente nuevo desea conectarse y se le admite */
+				if (FD_ISSET (server_socketfd, &readfds) )
 					nuevoJugador(nFilas, nColumnas);						
-				}
+				
 			}
 		}
 	return EXIT_SUCCESS;
 }
 
 /* Elimina las partidas finalizadas del array de partidas */
-void compactaClavesP(void){
-
+void compactaClavesP(void)
+{
 	if ((arrPartidas == NULL) || (numPartidas == 0) )
 		return;
 
@@ -316,8 +326,8 @@ void compactaClavesP(void){
 
 /* Introduce la ficha player en la columna col del tablero. 
  * Si la ficha no se puede meter devuelve FALSE, si no TRUE */
-int meterFicha(int nCol, int nFil, char **matrix, int col, char player){
-	
+int meterFicha(int nFil, int nCol, char **matrix, int col, char player)
+{
 	if(col >= nCol)
 		return FALSE;
 
@@ -339,46 +349,45 @@ int meterFicha(int nCol, int nFil, char **matrix, int col, char player){
 
 /* Comprueba si el jugador player a conseguido un 4 en linea. 
  * En caso de no haberlo conseguido, comprueba si se ha llegado a un empate */
-int connect4(int maxRow, int maxCol, char **tablero, char player, int p_index)
+int connect4(int nFil, int nCol, char **tablero, char player, int p_index)
 {
-
-    // Verificacion horizontal
-    for (int j = 0; j < maxRow - 3 ; j++) {
-        for (int i = 0; i < maxCol; i++) {
+    /* Verificacion horizontal */
+    for (int j = 0; j < nFil - 3 ; j++) {
+        for (int i = 0; i < nCol; i++) {
             if (tablero[i][j] == player && tablero[i][j+1] == player && tablero[i][j+2] == player && tablero[i][j+3] == player)
                 return TRUE;       
         }
     }
-    //Verificacion vertical
-    for (int i = 0; i < maxCol - 3 ; i++ ) {
-        for (int j = 0; j < maxRow; j++) {
+    /* Verificacion vertical */
+    for (int i = 0; i < nCol - 3 ; i++ ) {
+        for (int j = 0; j < nFil; j++) {
             if (tablero[i][j] == player && tablero[i+1][j] == player && tablero[i+2][j] == player && tablero[i+3][j] == player)
                 return TRUE;          
         }
     }
  
-    // Verificacion diagonal ascendiente 
-    for (int i = 3; i < maxCol; i++){
-        for (int j = 0; j < maxRow - 3; j++) {
+    /* Verificacion diagonal ascendiente */
+    for (int i = 3; i < nCol; i++){
+        for (int j = 0; j < nFil - 3; j++) {
             if (tablero[i][j] == player && tablero[i-1][j+1] == player && tablero[i-2][j+2] == player && tablero[i-3][j+3] == player)
                 return TRUE;
         }
     }
 
-    // Verificacion diagonal descendiente
-    for (int i = 3; i < maxCol; i++) {
-        for (int j = 3; j < maxRow; j++) {
+    /* Verificacion diagonal descendiente */
+    for (int i = 3; i < nCol; i++) {
+        for (int j = 3; j < nFil; j++) {
             if (tablero[i][j] == player && tablero[i-1][j-1] == player && tablero[i-2][j-2] == player && tablero[i-3][j-3] == player)
                 return TRUE;
         }
     }
 
     /* Verificacion empate */
-	for (int i = 0; i < maxRow; ++i)
-        for (int j = 0; j < maxCol; ++j) {
+	for (int i = 0; i < nFil; ++i)
+        for (int j = 0; j < nCol; ++j) {
             if (tablero[i][j] == '-')
                 goto E;
-            else if ( (i == (maxRow - 1)) && (j == (maxCol - 1)) ) 
+            else if ( (i == (nFil - 1)) && (j == (nCol - 1)) ) 
         		arrPartidas[p_index].TIE_FLAG = TRUE;
         }
 
@@ -386,22 +395,17 @@ E:    return (arrPartidas[p_index].TIE_FLAG == TRUE) ? TRUE : FALSE;
 
 }
 
-/* Calcula el maximo de dos numero dados */
-int max(int a, int b){
-	return (a > b) ? a : b;
-}
-
-/* Cierra la conexion con los jugadores de la partida */
-void clearPartida(int i){
-
+/* Cierra la conexion con los jugadores de la partida i */
+void clearPartida(int i)
+{
 	arrPartidas[i].END_FLAG = -1;
 	fclose(arrPartidas[i].Jugador.f);
 	close(arrPartidas[i].Jugador.fd);
 }
 
-/* Muestra el estado del tablero por pantalla */
-void mostrarTablero(int nFil, int nCol, char **tablero){
-
+/* Muestra el estado del tablero por terminal stdout*/
+void mostrarTablero(int nFil, int nCol, char **tablero)
+{
 	for (int i = 0; i < nCol; ++i)
 		printf("  %d \t", i);
 	printf("\n");
@@ -415,32 +419,34 @@ void mostrarTablero(int nFil, int nCol, char **tablero){
     printf("\n\n");
 }
 
-void finPartida(int p_index){
-
+/* Comprueba el resultado de la partida y notifica a los jugadores */
+void finPartida(int p_index)
+{
 	if (arrPartidas[p_index].TIE_FLAG == TRUE) {
 		fprintf(arrPartidas[p_index].Jugador.f, "TIE\n");
 		printf("[+] La partida %d ha finalizado: EMPATE!\n", p_index + 1);
 		clearPartida(p_index);
-	}else{
-		if(arrPartidas[p_index].BOT_WIN_FLAG == TRUE){
+	} else {
+		if(arrPartidas[p_index].BOT_WIN_FLAG == TRUE)
 			fprintf(arrPartidas[p_index].Jugador.f, "DEFEAT\n");
-		} else {
+		else 
 			fprintf(arrPartidas[p_index].Jugador.f, "VICTORY\n");
-		}
+
 		printf("[+] La partida %d ha finalizado\n", p_index + 1);
 		clearPartida(p_index);
 	}
 }
 
-void salir(int i){
-
+/* Controla que el adversario haya abandonado la partida */
+void salir(int i)
+{
 	printf("[+] Partida %d interrumpida.\n", i + 1);
    	printf("[+] Jugador %s ha cerrado la conexión\n", arrPartidas[i].Jugador.nombre);
    	fprintf(arrPartidas[i].Jugador.f, "SALIR\n");
-
 	clearPartida(i);
 }
 
+/* Acepta un nuevo cliente, si hay espacio lo añade a una nuevo partida, sino se le envia el mensaje "FULL" */
 void nuevoJugador(int nFilas, int nColumnas){
 
 	char buffer[MAXDATASIZE];
@@ -450,9 +456,9 @@ void nuevoJugador(int nFilas, int nColumnas){
 
 	/* Acepta la conexión con el cliente, guardándola en el array */
 	addrlen = sizeof(client_dir);
-	if ((client_socketfd = accept(server_socketfd, (struct sockaddr *)&client_dir, &addrlen)) != -1){
+	if ((client_socketfd = accept(server_socketfd, (struct sockaddr *)&client_dir, &addrlen)) != -1) {
 		printf("[+] Conexion establecida desde %s:%d\n", inet_ntoa(client_dir.sin_addr), ntohs(client_dir.sin_port));
-	}else{
+	} else {
 		perror("Failed Accept");
 		exit(EXIT_FAILURE);
 	}
@@ -461,7 +467,7 @@ void nuevoJugador(int nFilas, int nColumnas){
 	jugador c;
 
 	c.fd = client_socketfd;
-	if( (c.f = fdopen(c.fd, "r+")) == NULL){
+	if ( (c.f = fdopen(c.fd, "r+")) == NULL) {
 		perror("fdopen failed");
 		protocolError(c.f, c.fd);
 	}
@@ -510,6 +516,7 @@ void nuevoJugador(int nFilas, int nColumnas){
 		protocolError(c.f, c.fd);
 }
 
+/* Registro de el jugador c */
 void registrar(jugador c){
 
 	char buffer[MAXDATASIZE];
@@ -571,6 +578,7 @@ void registrar(jugador c){
 
 }
 
+/* Login del jugador c */
 void login(jugador c, char buffer[MAXDATASIZE]){
 
 	char tempUser_id[MAXUSERSIZE];
@@ -613,7 +621,7 @@ void login(jugador c, char buffer[MAXDATASIZE]){
 	printf("[+] Numero de partidas en juego: %d\n", numPartidas); 
 }
 
-	
+/* Controla el comienzo de una nueva partida */
 void comienzaPartida(int i, int nFilas, int nColumnas){
 
 	int tempColumna;
@@ -649,6 +657,7 @@ void comienzaPartida(int i, int nFilas, int nColumnas){
 	arrPartidas[i].PLAYING_FLAG = TRUE;
 }
 
+/* Atiende la partida p_index */
 void atiendeJugador(int p_index, int nFilas, int nColumnas){
 
 	int tempColumna;
@@ -657,14 +666,14 @@ void atiendeJugador(int p_index, int nFilas, int nColumnas){
 
 A:	if (fgets(buffer, MAXDATASIZE, arrPartidas[p_index].Jugador.f) == NULL){
 		perror("fgets failed");
-		salir_correctamente(EXIT_FAILURE);
+		salir_correctamente(EXIT_FAILURE);/********/
 	}
 
 	sscanf(buffer, "%s", cmd);
 	if (strcmp("COLUMN", cmd) == 0) {
 		sscanf(buffer, "%*s %d", &tempColumna);
 		if (meterFicha(nFilas, nColumnas,  arrPartidas[p_index].tablero, tempColumna, arrPartidas[p_index].Jugador.player) == FALSE) {
-			printf("[+] %s ha introducido un numero de columna incorrecto, vuelva a probar.", arrPartidas[p_index].Jugador.nombre);
+			printf("[+] %s ha introducido un numero de columna incorrecto, vuelva a probar.\n", arrPartidas[p_index].Jugador.nombre);
 			fprintf(arrPartidas[p_index].Jugador.f, "COLUMN ERROR\n");
 			goto A;
 		} else {
@@ -678,8 +687,9 @@ A:	if (fgets(buffer, MAXDATASIZE, arrPartidas[p_index].Jugador.f) == NULL){
 		   		finPartida(p_index);
 		    } else {
 		    	tempColumna = simulador(nFilas, nColumnas, arrPartidas[p_index].tablero);
+		    	printf("Columna BOT: %d\n", tempColumna);
 		    	meterFicha(nFilas, nColumnas,  arrPartidas[p_index].tablero, tempColumna, Bot.player);
-
+		    	
 		    	printf("[+] Partida %d: %s VS %s\n", p_index + 1, Bot.name, arrPartidas[p_index].Jugador.nombre);
 	        	mostrarTablero(nFilas, nColumnas, arrPartidas[p_index].tablero);
 

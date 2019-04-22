@@ -23,7 +23,7 @@
 #define MAX_JUGADORESP 2	/* Maximo numero de jugadores por partida */
 #define MAX_PARTIDAS 4		/* Numero maximo de partidas */
 #define TRUE 1
-#define FALSE 2
+#define FALSE 0
 
 
 /* Informacion sobre jugador */
@@ -56,29 +56,33 @@ FILE *usersDB = NULL;							/* Base de datos: Fichero con nombre de usuario, res
 
 
 /* Definicion de funciones */
-void salir_correctamente(int code);
+void login(jugador j, char buffer[MAXDATASIZE]);
+
+void nuevoJugador(int nFil, int nCol);
+
+void registrar(jugador c);
+
+void comienzaPartida(int i, int nFil, int nCol);
+
+void mostrarTablero(int nFil, int nCol, int **tablero);
+
+void turno(int p_index, int j_index, int tempColumna);
 
 int connect4(int maxRow, int maxCol, int **tablero, int player, int p);
 
-int meterFicha(int nCol, int nFil, int **matrix, int col, int player);
+int meterFicha(int nFil, int nCol, int **matrix, int col, int player);
 
-int max(int, int);
+void finPartida(int p_index, int j_index);
+
+void salir(int i, int j);
 
 void clearPartida(int);
 
 void compactaClavesP(void);
 
-void nuevoJugador(int nFil, int nCol);
-void login(jugador j, char buffer[MAXDATASIZE]);
-void registrar(jugador c);
-void salir(int i, int j);
-void finPartida(int p_index, int j_index);
-void comienzaPartida(int i, int nFil, int nCol);
-void mostrarTablero(int nFil, int nCol, int **tablero);
-void turno(int p_index, int j_index, int tempColumna);
+void salir_correctamente(int code);
 
-
-/* Declaracion de funciones */
+/* Declaracion de funciones auxiliares*/
 char *randString(){
 
     char *str = (char*)calloc(100, sizeof(char));
@@ -139,8 +143,8 @@ int setup_signals(){
   return 0;
 }
 
-void salir_correctamente(int code){
-
+void salir_correctamente(int code)
+{
 	for (int i = 0; i < numPartidas; ++i){
 		fclose(arrPartidas[i].Jugadores[0].f);
 		fclose(arrPartidas[i].Jugadores[1].f);
@@ -154,14 +158,20 @@ void salir_correctamente(int code){
 	exit(code);
 }
 
-void protocolError(FILE *f, int fd){
-
+void protocolError(FILE *f, int fd)
+{
 	fclose(f);
 	close(fd);
 }
 
+int max(int a, int b)
+{
+	return (a > b) ? a : b;
+}
 
-int main(int argc, char const *argv[]){
+
+int main(int argc, char const *argv[])
+{
 	
 	system("clear");
 	
@@ -324,13 +334,9 @@ A:							if (fgets(buffer, MAXDATASIZE, arrPartidas[i].Jugadores[j].f) == NULL){
 	return EXIT_SUCCESS;
 }
 
-
-
-
-
 /* Elimina las partidas finalizadas del array de partidas */
-void compactaClavesP(void){
-
+void compactaClavesP(void)
+{
 	if ((arrPartidas == NULL) || (numPartidas == 0) )
 		return;
 
@@ -348,22 +354,24 @@ void compactaClavesP(void){
 
 /* Introduce la ficha player en la columna col del tablero. 
  * Si la ficha no se puede meter devuelve FALSE, si no TRUE */
-int meterFicha(int nCol, int nFil, int **matrix, int col, int player){
+int meterFicha(int nFil, int nCol, char **matrix, int col, char player)
+{
 	
 	if(col >= nCol)
-		return -1;
+		return FALSE;
 
 	int z = 0; 
-	while(z < nFil){
-		if(matrix[z][col] != 0)
+	while (z < nFil) {
+		if(matrix[z][col] != '-')
 			break;
 		z++;
 	}
-	if(z == 0){
-		return -1;
-	}else{
+	if (z == 0) { 
+		printf("[+] Columna incorrecta, vuelva a elegir.\n");
+		return FALSE;
+	} else {
 		matrix[z - 1][col] = player;
-		return 0;
+		return TRUE;
 	}
 }
 
@@ -418,21 +426,14 @@ E:    return (arrPartidas[p].TIE_FLAG == TRUE) ? TRUE : FALSE;
 
 }
 
-int max(int a, int b){
-	return (a > b) ? a : b;
-}
-
-void clearPartida(int i){
-
+void clearPartida(int i)
+{
 	arrPartidas[i].END_FLAG = -1;
-	//arrPartidas[i].numJugadores = 0;
 	fclose(arrPartidas[i].Jugadores[0].f);
 	fclose(arrPartidas[i].Jugadores[1].f);
 	close(arrPartidas[i].Jugadores[0].fd);
 	close(arrPartidas[i].Jugadores[1].fd);
-
 }
-
 
 /* Acepta la conexión con el cliente, guardándola en el array */
 void nuevoJugador(int nFilas, int nColumnas){
@@ -606,27 +607,30 @@ void registrar(jugador c){
 	if (arrPartidas[numPartidas].numJugadores == 1) {
 		c.player = 1;
 		arrPartidas[numPartidas].Jugadores[0] = c;
-		printf("[+] Matchmaking. Wait a momemnt man...\n");
+		printf("[+] Matchmaking...\n");
 	} else if(arrPartidas[numPartidas].numJugadores == 2) {
 		c.player = -1;
 		arrPartidas[numPartidas].Jugadores[1] = c;
 		arrPartidas[numPartidas].START_FLAG = TRUE;
 		printf("[+] La partida %d esta apunto de comenzar.\n", numPartidas);
 		numPartidas++;
+		printf("[+] Numero de partidas en juego: %d\n", numPartidas); 
 	} 
 }
 
 
-void salir(int i, int j){
+void salir(int i, int j)
+{
 
 	printf("[+] Partida %d interrumpida.\n", i);
    	printf("[+] Jugador %s ha cerrado la conexión\n", arrPartidas[i].Jugadores[j].nombre);
+   
    	if(j == 1)
    		fprintf(arrPartidas[i].Jugadores[j - 1].f, "SALIR\n");
 	else if(j == 0)
 		fprintf(arrPartidas[i].Jugadores[j + 1].f, "SALIR\n");
+	
 	clearPartida(i);
-
 }
 
 void finPartida(int p_index, int j_index){
@@ -634,18 +638,18 @@ void finPartida(int p_index, int j_index){
 	if (arrPartidas[p_index].TIE_FLAG == TRUE) {
 		fprintf(arrPartidas[p_index].Jugadores[0].f, "TIE\n");
 		fprintf(arrPartidas[p_index].Jugadores[1].f, "TIE\n");
-		printf("[+] La partida %d ha finalizado\n", p_index);
+		printf("[+] La partida %d ha finalizado\n", p_index + 1);
 		clearPartida(p_index);
 	}else{
 		if (j_index == 0) {
 			fprintf(arrPartidas[p_index].Jugadores[j_index].f, "VICTORY\n");
 			fprintf(arrPartidas[p_index].Jugadores[j_index + 1].f, "DEFEAT\n");
-			printf("[+] La partida %d ha finalizado\n", p_index);
+			printf("[+] La partida %d ha finalizado\n", p_index + 1);
 			clearPartida(p_index);
 		} else if(j_index == 1) {
 			fprintf(arrPartidas[p_index].Jugadores[j_index].f, "VICTORY\n");
 			fprintf(arrPartidas[p_index].Jugadores[j_index - 1].f, "DEFEAT\n");
-			printf("[+] La partida %d ha finalizado\n", p_index);
+			printf("[+] La partida %d ha finalizado\n", p_index + 1);
 			clearPartida(p_index);
 		}
 	}
@@ -684,6 +688,10 @@ void comienzaPartida(int i, int nFilas, int nColumnas){
 }
 
 void mostrarTablero(int nFil, int nCol, int **tablero){
+
+	for (int i = 0; i < nCol; ++i)
+		printf("  %d \t", i);
+	printf("\n");
 
     for (int i = 0; i < nFil; ++i){
     	for (int j = 0; j < nCol; ++j){

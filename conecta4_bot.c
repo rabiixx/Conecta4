@@ -14,13 +14,14 @@ int analizaEstados(int C, int R, char **tablero, char fichaBot, char fichaJug, i
 int intro();
 
 
-int simulador(int R, int C, char **tablero){
+int simulador(int R, int C, char **tablero)
+{
 
 	char fichaBot      = 'X';
     char fichaJugador  = 'O';
 
 	int casosOk[4][3];
-	analizaEstados(C, R,tablero,fichaBot,fichaJugador,casosOk,'B');//El primer carater es la ficah del bot el segundo caracter es la ficaha del jugador
+	analizaEstados(C, R, tablero,fichaBot,fichaJugador,casosOk,'B');//El primer carater es la ficah del bot el segundo caracter es la ficaha del jugador
 
 	int casosNOok[4][3];
 	analizaEstados(C, R, tablero,fichaJugador,fichaBot,casosNOok,'J');
