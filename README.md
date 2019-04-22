@@ -10,7 +10,7 @@ Ninguno
 
 Compilar todo
 ```
-make obejtivo1 
+make all 
 ```
 o 
 ```
