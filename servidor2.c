@@ -406,6 +406,9 @@ void clearPartida(int i)
 /* Muestra el estado del tablero por terminal stdout*/
 void mostrarTablero(int nFil, int nCol, char **tablero)
 {
+
+	system("clear");
+
 	for (int i = 0; i < nCol; ++i)
 		printf("  %d \t", i);
 	printf("\n");

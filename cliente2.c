@@ -388,10 +388,10 @@ void turno(int nFilas, int nColumnas, char tablero[][nColumnas], char player)
 		salir_correctamente(EXIT_FAILURE);
 	}
 
-	if (strcmp("COLUMN OK\n", buffer) == 0)
+	if (strcmp("COLUMN OK\n", buffer) == 0) {
 		meterFicha(nFilas, nColumnas, tablero, col, player);
-		mostrarTablero(nFilas, nColumnas, tablero);
-	else if (strcmp("COLUMN ERROR\n", buffer) == 0)
+		mostrarTablero(nFilas, nColumnas, tablero);	
+	} else if (strcmp("COLUMN ERROR\n", buffer) == 0)
 		turno(nFilas, nColumnas, tablero, player);
 	else
 		salir_correctamente(EXIT_FAILURE);
